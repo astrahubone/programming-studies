@@ -1,0 +1,12 @@
+.open-modal-btn {
+  padding: 10px 15px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+
+  &:hover {
+    background: #0056b3;
+  }
+}

@@ -1,0 +1,81 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* FullCalendar Dark Mode Styles */
+.dark .fc {
+  --fc-border-color: #374151;
+  --fc-button-bg-color: #4B5563;
+  --fc-button-border-color: #4B5563;
+  --fc-button-hover-bg-color: #6B7280;
+  --fc-button-hover-border-color: #6B7280;
+  --fc-button-active-bg-color: #6B7280;
+  --fc-button-active-border-color: #6B7280;
+  --fc-event-bg-color: #4F46E5;
+  --fc-event-border-color: #4F46E5;
+  --fc-today-bg-color: rgba(79, 70, 229, 0.1);
+}
+
+.dark .fc-theme-dark {
+  background-color: #1F2937;
+  color: #E5E7EB;
+}
+
+.dark .fc-theme-dark .fc-toolbar-title {
+  color: #E5E7EB;
+}
+
+.dark .fc-theme-dark .fc-col-header-cell {
+  background-color: #374151;
+  color: #E5E7EB;
+}
+
+.dark .fc-theme-dark .fc-daygrid-day {
+  background-color: #1F2937;
+  border-color: #374151;
+}
+
+.dark .fc-theme-dark .fc-daygrid-day-number {
+  color: #E5E7EB;
+}
+
+.dark .fc-theme-dark .fc-daygrid-day.fc-day-today {
+  background-color: rgba(79, 70, 229, 0.1);
+}
+
+.dark .fc-theme-dark .fc-button {
+  background-color: #4B5563;
+  border-color: #4B5563;
+  color: #E5E7EB;
+}
+
+.dark .fc-theme-dark .fc-button:hover {
+  background-color: #6B7280;
+  border-color: #6B7280;
+}
+
+.dark .fc-theme-dark .fc-button:disabled {
+  background-color: #374151;
+  border-color: #374151;
+  opacity: 0.5;
+}
+
+.dark .fc-theme-dark .fc-button-active {
+  background-color: #6B7280;
+  border-color: #6B7280;
+}
+
+/* Color picker styles for dark mode */
+.dark input[type="color"] {
+  background-color: #374151;
+  border-color: #4B5563;
+}
+
+.dark input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.dark input[type="color"]::-webkit-color-swatch {
+  border: none;
+  border-radius: 4px;
+}
