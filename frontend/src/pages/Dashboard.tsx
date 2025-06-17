@@ -39,7 +39,7 @@ export default function Dashboard() {
 
   async function handleReset() {
     if (!user) {
-      toast.error('Você precisa estar logado para resetar os dados', {
+      toast.error('Você precisa estars logado para resetar os dados', {
         position: "top-right",
         autoClose: 3000,
         hideProgressBar: false,
