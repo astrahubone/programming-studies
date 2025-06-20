@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Box, Flex, Text, Card, Grid } from '@radix-ui/themes';
 import Layout from "../components/Layout";
 import { useAuth } from "../contexts/AuthContext";
 import {
@@ -43,7 +44,7 @@ const COLORS = ["#60A5FA", "#F59E0B", "#EF4444"];
 
 export default function Performance() {
   const { user } = useAuth();
-  const { studySessions: { data: sessions, isLoading }, error } = useStudySessions();
+  const { studySessions: { data: sessions, isLoading, error } } = useStudySessions();
   const [stats, setStats] = useState<StudyStats | null>(null);
 
   // Process stats when sessions data changes
@@ -113,9 +114,11 @@ export default function Performance() {
   if (isLoading) {
     return (
       <Layout>
-        <div className="p-6">
-          <div className="text-center text-gray-600 dark:text-gray-300">Carregando estatísticas...</div>
-        </div>
+        <Box p="6">
+          <Flex justify="center" align="center" style={{ height: '200px' }}>
+            <Text>Carregando estatísticas...</Text>
+          </Flex>
+        </Box>
       </Layout>
     );
   }
@@ -123,106 +126,131 @@ export default function Performance() {
   if (error || !stats) {
     return (
       <Layout>
-        <div className="p-6">
-          <div className="text-center text-gray-600 dark:text-gray-300">Não há dados disponíveis</div>
-        </div>
+        <Box p="6">
+          <Flex justify="center" align="center" style={{ height: '200px' }}>
+            <Text color="red">Não há dados disponíveis</Text>
+          </Flex>
+        </Box>
       </Layout>
     );
   }
 
   return (
     <Layout>
-      <div className="p-6">
-        <div className="mb-6">
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
+      <Box p="6">
+        <Box mb="6">
+          <Text size="6" weight="bold" mb="1" style={{ display: 'block' }}>
             Análise de Desempenho
-          </h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          </Text>
+          <Text size="3" color="gray">
             Acompanhe o progresso e o desempenho do seu estudo
-          </p>
-        </div>
+          </Text>
+        </Box>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <h2 className="text-lg font-médio text-gray-900 dark:text-white mb-4">
+        <Grid columns={{ initial: "1", md: "2" }} gap="6">
+          {/* Overview Stats */}
+          <Card size="3">
+            <Text size="4" weight="medium" mb="4" style={{ display: 'block' }}>
               Visão Geral
-            </h2>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-blue-50 dark:bg-blue-900/50 p-4 rounded-lg">
-                <div className="text-sm text-blue-600 dark:text-blue-300">Taxa de conclusão</div>
-                <div className="text-2xl font-semibold text-blue-900 dark:text-blue-100">
-                  {stats.totalSessions > 0 ? Math.round((stats.completedSessions / stats.totalSessions) * 100): 0}%
-                </div>
-              </div>
-              <div className="bg-green-50 dark:bg-green-900/50 p-4 rounded-lg">
-                <div className="text-sm text-green-600 dark:text-green-300">Taxa de sucesso</div>
-                <div className="text-2xl font-semibold text-green-900 dark:text-green-100">
+            </Text>
+            <Grid columns="2" gap="4">
+              <Box p="4" style={{ backgroundColor: 'var(--blue-3)', borderRadius: '8px' }}>
+                <Text size="2" color="blue" style={{ display: 'block' }}>Taxa de conclusão</Text>
+                <Text size="6" weight="bold" style={{ color: 'var(--blue-11)' }}>
+                  {stats.totalSessions > 0 ? Math.round((stats.completedSessions / stats.totalSessions) * 100) : 0}%
+                </Text>
+              </Box>
+              <Box p="4" style={{ backgroundColor: 'var(--green-3)', borderRadius: '8px' }}>
+                <Text size="2" color="green" style={{ display: 'block' }}>Taxa de sucesso</Text>
+                <Text size="6" weight="bold" style={{ color: 'var(--green-11)' }}>
                   {stats.totalQuestions > 0 ? Math.round((stats.correctQuestions / stats.totalQuestions) * 100) : 0}%
-                </div>
-              </div>
-              <div className="bg-purple-50 dark:bg-purple-900/50 p-4 rounded-lg">
-                <div className="text-sm text-purple-600 dark:text-purple-300">Total de sessões</div>
-                <div className="text-2xl font-semibold text-purple-900 dark:text-purple-100">
+                </Text>
+              </Box>
+              <Box p="4" style={{ backgroundColor: 'var(--purple-3)', borderRadius: '8px' }}>
+                <Text size="2" color="purple" style={{ display: 'block' }}>Total de sessões</Text>
+                <Text size="6" weight="bold" style={{ color: 'var(--purple-11)' }}>
                   {stats.totalSessions}
-                </div>
-              </div>
-              <div className="bg-orange-50 dark:bg-orange-900/50 p-4 rounded-lg">
-                <div className="text-sm text-orange-600 dark:text-orange-300">
-                  Perguntas respondidas
-                </div>
-                <div className="text-2xl font-semibold text-orange-900 dark:text-orange-100">
+                </Text>
+              </Box>
+              <Box p="4" style={{ backgroundColor: 'var(--orange-3)', borderRadius: '8px' }}>
+                <Text size="2" color="orange" style={{ display: 'block' }}>Perguntas respondidas</Text>
+                <Text size="6" weight="bold" style={{ color: 'var(--orange-11)' }}>
                   {stats.totalQuestions}
-                </div>
-              </div>
-            </div>
-          </div>
+                </Text>
+              </Box>
+            </Grid>
+          </Card>
 
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <h2 className="text-lg font-médio text-gray-900 dark:text-white mb-4">
+          {/* Subject Performance Chart */}
+          <Card size="3">
+            <Text size="4" weight="medium" mb="4" style={{ display: 'block' }}>
               Desempenho da Matéria
-            </h2>
-            <div className="h-64">
+            </Text>
+            <Box style={{ height: '300px' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={stats.subjectPerformance}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                  <XAxis dataKey="subject" stroke="#9CA3AF" />
-                  <YAxis stroke="#9CA3AF" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--gray-6)" />
+                  <XAxis 
+                    dataKey="subject" 
+                    stroke="var(--gray-11)" 
+                    fontSize={12}
+                    tick={{ fill: 'var(--gray-11)' }}
+                  />
+                  <YAxis 
+                    stroke="var(--gray-11)" 
+                    fontSize={12}
+                    tick={{ fill: 'var(--gray-11)' }}
+                  />
                   <Tooltip 
                     contentStyle={{ 
-                      backgroundColor: '#1F2937',
-                      border: 'none',
-                      borderRadius: '0.375rem',
-                      color: '#F3F4F6'
+                      backgroundColor: 'var(--gray-2)',
+                      border: '1px solid var(--gray-6)',
+                      borderRadius: '6px',
+                      color: 'var(--gray-12)'
                     }}
                   />
                   <Legend />
                   <Bar
                     dataKey="questionsCorrect"
-                    name="Acertei"
-                    fill="#10B981"
+                    name="Acertos"
+                    fill="var(--green-9)"
                   />
-                  <Bar dataKey="questionsTotal" name="Total" fill="#6B7280" />
+                  <Bar 
+                    dataKey="questionsTotal" 
+                    name="Total" 
+                    fill="var(--gray-8)" 
+                  />
                 </BarChart>
               </ResponsiveContainer>
-            </div>
-          </div>
+            </Box>
+          </Card>
 
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <h2 className="text-lg font-médio text-gray-900 dark:text-white mb-4">
+          {/* Weekly Progress Chart */}
+          <Card size="3">
+            <Text size="4" weight="medium" mb="4" style={{ display: 'block' }}>
               Progresso Semanal
-            </h2>
-            <div className="h-64">
+            </Text>
+            <Box style={{ height: '300px' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={stats.weeklyProgress}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                  <XAxis dataKey="week" stroke="#9CA3AF" />
-                  <YAxis stroke="#9CA3AF" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--gray-6)" />
+                  <XAxis 
+                    dataKey="week" 
+                    stroke="var(--gray-11)" 
+                    fontSize={12}
+                    tick={{ fill: 'var(--gray-11)' }}
+                  />
+                  <YAxis 
+                    stroke="var(--gray-11)" 
+                    fontSize={12}
+                    tick={{ fill: 'var(--gray-11)' }}
+                  />
                   <Tooltip 
                     contentStyle={{ 
-                      backgroundColor: '#1F2937',
-                      border: 'none',
-                      borderRadius: '0.375rem',
-                      color: '#F3F4F6'
+                      backgroundColor: 'var(--gray-2)',
+                      border: '1px solid var(--gray-6)',
+                      borderRadius: '6px',
+                      color: 'var(--gray-12)'
                     }}
                   />
                   <Legend />
@@ -230,19 +258,21 @@ export default function Performance() {
                     type="monotone"
                     dataKey="completed"
                     name="Sessões concluídas"
-                    stroke="#6366F1"
+                    stroke="var(--indigo-9)"
                     strokeWidth={2}
+                    dot={{ fill: 'var(--indigo-9)' }}
                   />
                 </LineChart>
               </ResponsiveContainer>
-            </div>
-          </div>
+            </Box>
+          </Card>
 
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <h2 className="text-lg font-médio text-gray-900 dark:text-white mb-4">
+          {/* Difficulty Distribution Chart */}
+          <Card size="3">
+            <Text size="4" weight="medium" mb="4" style={{ display: 'block' }}>
               Distribuição de Dificuldade
-            </h2>
-            <div className="h-64">
+            </Text>
+            <Box style={{ height: '300px' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -252,7 +282,8 @@ export default function Performance() {
                     cx="50%"
                     cy="50%"
                     outerRadius={80}
-                    label
+                    label={({ difficulty, count }) => `${difficulty}: ${count}`}
+                    labelLine={false}
                   >
                     {stats.difficultyDistribution.map((entry, index) => (
                       <Cell
@@ -263,19 +294,19 @@ export default function Performance() {
                   </Pie>
                   <Tooltip 
                     contentStyle={{ 
-                      backgroundColor: '#1F2937',
-                      border: 'none',
-                      borderRadius: '0.375rem',
-                      color: '#F3F4F6'
+                      backgroundColor: 'var(--gray-2)',
+                      border: '1px solid var(--gray-6)',
+                      borderRadius: '6px',
+                      color: 'var(--gray-12)'
                     }}
                   />
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>
-            </div>
-          </div>
-        </div>
-      </div>
+            </Box>
+          </Card>
+        </Grid>
+      </Box>
     </Layout>
   );
 }

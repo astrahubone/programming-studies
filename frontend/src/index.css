@@ -21,12 +21,14 @@
 
 .fc-theme-standard .fc-toolbar-title {
   color: var(--gray-12);
+  font-weight: 600;
 }
 
 .fc-theme-standard .fc-col-header-cell {
   background-color: var(--gray-3);
   color: var(--gray-12);
   border-color: var(--gray-6);
+  font-weight: 500;
 }
 
 .fc-theme-standard .fc-daygrid-day {
@@ -37,6 +39,7 @@
 .fc-theme-standard .fc-daygrid-day-number {
   color: var(--gray-12) !important;
   font-weight: 500;
+  padding: 4px;
 }
 
 .fc-theme-standard .fc-daygrid-day.fc-day-today {
@@ -46,12 +49,21 @@
 .fc-theme-standard .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
   color: var(--indigo-11) !important;
   font-weight: 600;
+  background-color: var(--indigo-9);
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 2px;
 }
 
 .fc-theme-standard .fc-button {
   background-color: var(--gray-4);
   border-color: var(--gray-6);
   color: var(--gray-12);
+  font-weight: 500;
 }
 
 .fc-theme-standard .fc-button:hover {
@@ -91,12 +103,14 @@
 
 [data-theme="dark"] .fc-theme-standard .fc-toolbar-title {
   color: var(--gray-12);
+  font-weight: 600;
 }
 
 [data-theme="dark"] .fc-theme-standard .fc-col-header-cell {
   background-color: var(--gray-4);
   color: var(--gray-12);
   border-color: var(--gray-6);
+  font-weight: 500;
 }
 
 [data-theme="dark"] .fc-theme-standard .fc-daygrid-day {
@@ -107,6 +121,7 @@
 [data-theme="dark"] .fc-theme-standard .fc-daygrid-day-number {
   color: var(--gray-12) !important;
   font-weight: 500;
+  padding: 4px;
 }
 
 [data-theme="dark"] .fc-theme-standard .fc-daygrid-day.fc-day-today {
@@ -114,14 +129,23 @@
 }
 
 [data-theme="dark"] .fc-theme-standard .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
-  color: var(--indigo-11) !important;
+  color: var(--indigo-1) !important;
   font-weight: 600;
+  background-color: var(--indigo-9);
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 2px;
 }
 
 [data-theme="dark"] .fc-theme-standard .fc-button {
   background-color: var(--gray-4);
   border-color: var(--gray-6);
   color: var(--gray-12);
+  font-weight: 500;
 }
 
 [data-theme="dark"] .fc-theme-standard .fc-button:hover {

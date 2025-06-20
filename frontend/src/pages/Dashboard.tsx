@@ -16,6 +16,8 @@ interface StudySession {
   sub_subject_id: string;
   scheduled_date: string;
   completed_at: string | null;
+  questions_total: number | null;
+  questions_correct: number | null;
   sub_subject: {
     title: string;
     difficulty: 'fácil' | 'médio' | 'difícil';
@@ -104,6 +106,7 @@ export default function Dashboard() {
     extendedProps: {
       completed: !!session.completed_at,
       difficulty: session.sub_subject.difficulty,
+      session: session, // Pass the full session object
     },
   })) || [];
 
@@ -154,9 +157,9 @@ export default function Dashboard() {
               initialView="dayGridMonth"
               events={events}
               eventClick={({ event }) => {
-                const session = sessions?.find(s => s.id === event.id);
-                if (session) {
-                  setSelectedSession(session);
+                const sessionData = event.extendedProps.session;
+                if (sessionData) {
+                  setSelectedSession(sessionData);
                 }
               }}
               eventContent={(eventInfo) => {
@@ -172,7 +175,7 @@ export default function Dashboard() {
               }}
               height="auto"
               locale={ptBrLocale}
-              className="fc-theme-custom dark:fc-theme-dark"
+              className="fc-theme-standard"
             />
           )}
         </Card>
@@ -183,6 +186,7 @@ export default function Dashboard() {
             onClose={() => setSelectedSession(null)}
             onComplete={() => {
               setSelectedSession(null);
+              // Refetch sessions to update the calendar
             }}
           />
         )}
