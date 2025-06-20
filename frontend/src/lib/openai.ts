@@ -12,6 +12,16 @@ interface Question {
   options: string[];
 }
 
+// Helper function to shuffle an array
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 export async function generateQuestions(
   subjectTitle: string,
   subSubjectTitle: string,
@@ -155,13 +165,24 @@ Lembre-se:
         throw new Error(`Question ${index + 1}: Must have exactly 4 options`);
       }
 
-      if (!q.options.includes(q.correctAnswer)) {
-        throw new Error(`Question ${index + 1}: Correct answer not found in options`);
-      }
-
       if (q.options.some(opt => typeof opt !== 'string' || !opt.trim())) {
         throw new Error(`Question ${index + 1}: All options must be non-empty strings`);
       }
+
+      // Clean the correct answer and options
+      const cleanCorrectAnswer = q.correctAnswer.trim();
+      let cleanOptions = q.options.map(opt => opt.trim().replace(/\s+/g, ' '));
+
+      // Ensure the correct answer is in the options array
+      if (!cleanOptions.includes(cleanCorrectAnswer)) {
+        // Replace a random option with the correct answer
+        const randomIndex = Math.floor(Math.random() * cleanOptions.length);
+        cleanOptions[randomIndex] = cleanCorrectAnswer;
+        console.warn(`Question ${index + 1}: Correct answer was not in options, replaced option at index ${randomIndex}`);
+      }
+
+      // Shuffle the options to randomize the position of the correct answer
+      cleanOptions = shuffleArray(cleanOptions);
 
       // Clean and validate content length
       const cleanContent = q.content.trim().replace(/\s+/g, ' ');
@@ -169,15 +190,14 @@ Lembre-se:
         throw new Error(`Question ${index + 1}: Content exceeds 300 characters`);
       }
 
-      // Clean and validate options length
-      const cleanOptions = q.options.map(opt => opt.trim().replace(/\s+/g, ' '));
+      // Validate options length
       if (cleanOptions.some(opt => opt.length > 150)) {
         throw new Error(`Question ${index + 1}: One or more options exceed 150 characters`);
       }
 
       return {
         content: cleanContent,
-        correctAnswer: q.correctAnswer.trim(),
+        correctAnswer: cleanCorrectAnswer,
         options: cleanOptions,
       };
     });
