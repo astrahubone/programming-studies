@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { Box, Flex, Text, Button, Card, TextField, Select, Dialog } from '@radix-ui/themes';
-import { Plus, Edit2, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Edit2, Trash2, ChevronDown, ChevronUp, HelpCircle } from "lucide-react";
 import Layout from "../components/Layout";
 import { useAuth } from "../contexts/AuthContext";
 import { useSubjects } from "../hooks/api/useSubjects";
+import { useQuestions } from "../hooks/api/useQuestions";
 import { toast } from "react-toastify";
 
 interface Subject {
@@ -17,6 +18,13 @@ interface SubSubject {
   id: string;
   title: string;
   difficulty: "fácil" | "médio" | "difícil";
+}
+
+interface Question {
+  id: string;
+  content: string;
+  correct_answer: string;
+  options: string[];
 }
 
 const DEFAULT_COLORS = {
@@ -38,7 +46,11 @@ export default function SubjectManager() {
   const [expandedSubjects, setExpandedSubjects] = useState<Set<string>>(
     new Set()
   );
+  const [selectedSubSubjectId, setSelectedSubSubjectId] = useState<string | null>(null);
+  const [showQuestions, setShowQuestions] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const { questions } = useQuestions(selectedSubSubjectId || undefined);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -117,6 +129,11 @@ export default function SubjectManager() {
     });
   }
 
+  function handleSubSubjectClick(subSubjectId: string, subSubjectTitle: string) {
+    setSelectedSubSubjectId(subSubjectId);
+    setShowQuestions(true);
+  }
+
   if (!user?.id) {
     return (
       <Layout>
@@ -138,7 +155,7 @@ export default function SubjectManager() {
               Gerenciador de Matérias
             </Text>
             <Text size="3" color="gray">
-              Gerencie suas matérias e submatérias
+              Gerencie suas matérias e submatérias. Clique em uma submatéria para ver as questões.
             </Text>
           </Box>
           <Button
@@ -225,11 +242,20 @@ export default function SubjectManager() {
                     <Box mt="4" ml="7">
                       <Flex direction="column" gap="2">
                         {subject.sub_subjects.map((subSubject) => (
-                          <Card key={subSubject.id} variant="surface" size="2">
+                          <Card 
+                            key={subSubject.id} 
+                            variant="surface" 
+                            size="2"
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => handleSubSubjectClick(subSubject.id, subSubject.title)}
+                          >
                             <Flex justify="between" align="center">
-                              <Text size="3" weight="medium">
-                                {subSubject.title}
-                              </Text>
+                              <Flex align="center" gap="2">
+                                <Text size="3" weight="medium">
+                                  {subSubject.title}
+                                </Text>
+                                <HelpCircle size={14} color="var(--gray-9)" />
+                              </Flex>
                               <Box
                                 style={{
                                   padding: '4px 8px',
@@ -260,6 +286,7 @@ export default function SubjectManager() {
           )}
         </Card>
 
+        {/* Subject/Submateria Modal */}
         <Dialog.Root open={isModalOpen} onOpenChange={setIsModalOpen}>
           <Dialog.Content style={{ maxWidth: '600px' }}>
             <Dialog.Title>
@@ -373,6 +400,75 @@ export default function SubjectManager() {
                 </Flex>
               </Flex>
             </form>
+          </Dialog.Content>
+        </Dialog.Root>
+
+        {/* Questions Modal */}
+        <Dialog.Root open={showQuestions} onOpenChange={setShowQuestions}>
+          <Dialog.Content style={{ maxWidth: '800px', maxHeight: '80vh' }}>
+            <Dialog.Title>
+              Questões da Submatéria
+            </Dialog.Title>
+            
+            <Box mt="4" style={{ maxHeight: '60vh', overflow: 'auto' }}>
+              {questions.isLoading ? (
+                <Flex justify="center" align="center" p="4">
+                  <Text>Carregando questões...</Text>
+                </Flex>
+              ) : questions.error ? (
+                <Flex justify="center" align="center" p="4">
+                  <Text color="red">Erro ao carregar questões</Text>
+                </Flex>
+              ) : !questions.data || questions.data.length === 0 ? (
+                <Flex justify="center" align="center" p="4">
+                  <Text color="gray">Nenhuma questão encontrada para esta submatéria</Text>
+                </Flex>
+              ) : (
+                <Flex direction="column" gap="4">
+                  {questions.data.map((question: Question, index: number) => (
+                    <Card key={question.id} variant="surface" size="3">
+                      <Flex direction="column" gap="3">
+                        <Text size="3" weight="medium">
+                          {index + 1}. {question.content}
+                        </Text>
+                        <Flex direction="column" gap="2">
+                          {question.options.map((option, optionIndex) => (
+                            <Box
+                              key={optionIndex}
+                              p="2"
+                              style={{
+                                borderRadius: '6px',
+                                backgroundColor: option === question.correct_answer 
+                                  ? 'var(--green-3)' 
+                                  : 'var(--gray-3)',
+                                border: option === question.correct_answer 
+                                  ? '1px solid var(--green-6)' 
+                                  : '1px solid var(--gray-6)'
+                              }}
+                            >
+                              <Text size="2" weight={option === question.correct_answer ? "medium" : "regular"}>
+                                {String.fromCharCode(65 + optionIndex)}) {option}
+                                {option === question.correct_answer && (
+                                  <Text color="green" weight="bold"> ✓ Resposta Correta</Text>
+                                )}
+                              </Text>
+                            </Box>
+                          ))}
+                        </Flex>
+                      </Flex>
+                    </Card>
+                  ))}
+                </Flex>
+              )}
+            </Box>
+
+            <Flex justify="end" mt="4">
+              <Dialog.Close>
+                <Button variant="outline">
+                  Fechar
+                </Button>
+              </Dialog.Close>
+            </Flex>
           </Dialog.Content>
         </Dialog.Root>
       </Box>
