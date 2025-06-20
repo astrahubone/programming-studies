@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { XCircle, CheckCircle, XCircle as XIcon, RefreshCw } from 'lucide-react';
+import { Box, Flex, Text, Button, Card, Dialog, TextField, RadioGroup } from '@radix-ui/themes';
 import { generateQuestions } from '../lib/openai';
 import { format, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -194,7 +195,6 @@ export default function QuizModal({ session, onClose, onComplete }: QuizModalPro
       const correctCount = answers.filter(r => r.is_correct).length;
       const totalCount = questions.length;
 
-
       await submitAnswers.mutateAsync({
         sessionId: session.id,
         answers,
@@ -222,191 +222,181 @@ export default function QuizModal({ session, onClose, onComplete }: QuizModalPro
 
   if (loading) {
     return (
-      <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-2xl w-full">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 dark:border-indigo-400 mx-auto"></div>
-            <p className="mt-4 text-gray-600 dark:text-gray-300">
+      <Dialog.Root open={true}>
+        <Dialog.Content style={{ maxWidth: '600px' }}>
+          <Flex direction="column" align="center" gap="4" p="6">
+            <Box style={{ animation: 'spin 1s linear infinite' }}>
+              <RefreshCw size={32} />
+            </Box>
+            <Text size="3">
               {reviewMode ? 'Carregando resultados...' : 'Gerando questões...'}
-            </p>
-          </div>
-        </div>
-      </div>
+            </Text>
+          </Flex>
+        </Dialog.Content>
+      </Dialog.Root>
     );
   }
 
   if (error) {
     return (
-      <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-2xl w-full">
-          <div className="text-center">
-            <div className="text-red-600 dark:text-red-400 mb-4">
-              <XCircle className="h-12 w-12 mx-auto mb-2" />
-              <p>{error}</p>
-            </div>
-            <div className="space-x-4">
+      <Dialog.Root open={true}>
+        <Dialog.Content style={{ maxWidth: '600px' }}>
+          <Flex direction="column" align="center" gap="4" p="6">
+            <XCircle size={32} color="var(--red-9)" />
+            <Text size="3" color="red" align="center">{error}</Text>
+            <Flex gap="3">
               {retrying ? (
-                <div className="flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-                  <RefreshCw className="h-5 w-5 animate-spin mr-2" />
-                  <span>Tentando novamente...</span>
-                </div>
+                <Flex align="center" gap="2">
+                  <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                  <Text size="2">Tentando novamente...</Text>
+                </Flex>
               ) : (
                 <>
                   {retryCount < MAX_RETRIES && (
-                    <button
-                      onClick={() => loadQuestions(false)}
-                      className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 dark:bg-indigo-500 rounded-md hover:bg-indigo-700 dark:hover:bg-indigo-600"
-                    >
-                      <RefreshCw className="h-4 w-4 mr-2 inline" />
+                    <Button onClick={() => loadQuestions(false)}>
+                      <RefreshCw size={16} />
                       Tentar Novamente
-                    </button>
+                    </Button>
                   )}
-                  <button
-                    onClick={onClose}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600"
-                  >
+                  <Button variant="outline" onClick={onClose}>
                     Fechar
-                  </button>
+                  </Button>
                 </>
               )}
-            </div>
-          </div>
-        </div>
-      </div>
+            </Flex>
+          </Flex>
+        </Dialog.Content>
+      </Dialog.Root>
     );
   }
 
   // Study Mode Selection Screen
   if (!reviewMode && studyMode === null) {
     return (
-      <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-2xl w-full">
-          <div className="flex justify-between items-start mb-6">
-            <div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                {session.sub_subject.subject.title} - {session.sub_subject.title}
-              </h3>
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {format(addDays(new Date(session.scheduled_date), 1), 'PPP', { locale: ptBR })}
-              </p>
-            </div>
-            <button
-              onClick={onClose}
-              className="text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-400"
-            >
-              <XCircle className="h-6 w-6" />
-            </button>
-          </div>
+      <Dialog.Root open={true}>
+        <Dialog.Content style={{ maxWidth: '600px' }}>
+          <Dialog.Title>
+            {session.sub_subject.subject.title} - {session.sub_subject.title}
+          </Dialog.Title>
+          
+          <Box mt="2" mb="4">
+            <Text size="2" color="gray">
+              {format(addDays(new Date(session.scheduled_date), 1), 'PPP', { locale: ptBR })}
+            </Text>
+          </Box>
 
-          <div className="space-y-4">
-            <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+          <Flex direction="column" gap="4">
+            <Text size="4" weight="medium">
               Como você deseja registrar seu estudo?
-            </h4>
-            <button
+            </Text>
+            
+            <Card 
+              variant="surface" 
+              size="3" 
+              style={{ cursor: 'pointer' }}
               onClick={() => {
                 setStudyMode('platform');
                 loadQuestions();
               }}
-              className="w-full p-4 text-left bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600"
             >
-              <div className="font-medium text-gray-900 dark:text-white">Estudar com questões da plataforma</div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                A plataforma irá gerar questões personalizadas para você responder
-              </p>
-            </button>
-            <button
+              <Flex direction="column" gap="2">
+                <Text size="3" weight="medium">Estudar com questões da plataforma</Text>
+                <Text size="2" color="gray">
+                  A plataforma irá gerar questões personalizadas para você responder
+                </Text>
+              </Flex>
+            </Card>
+            
+            <Card 
+              variant="surface" 
+              size="3" 
+              style={{ cursor: 'pointer' }}
               onClick={() => setStudyMode('manual')}
-              className="w-full p-4 text-left bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600"
             >
-              <div className="font-medium text-gray-900 dark:text-white">Informar questões manualmente</div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Registre o número de questões que você já estudou e quantas acertou
-              </p>
-            </button>
-          </div>
-        </div>
-      </div>
+              <Flex direction="column" gap="2">
+                <Text size="3" weight="medium">Informar questões manualmente</Text>
+                <Text size="2" color="gray">
+                  Registre o número de questões que você já estudou e quantas acertou
+                </Text>
+              </Flex>
+            </Card>
+          </Flex>
+
+          <Flex justify="end" mt="6">
+            <Button variant="outline" onClick={onClose}>
+              Fechar
+            </Button>
+          </Flex>
+        </Dialog.Content>
+      </Dialog.Root>
     );
   }
 
   // Manual Questions Entry Screen
   if (!reviewMode && studyMode === 'manual') {
     return (
-      <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-2xl w-full">
-          <div className="flex justify-between items-start mb-6">
-            <div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                {session.sub_subject.subject.title} - {session.sub_subject.title}
-              </h3>
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {format(addDays(new Date(session.scheduled_date), 1), 'PPP', { locale: ptBR })}
-              </p>
-            </div>
-            <button
-              onClick={onClose}
-              className="text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-400"
-            >
-              <XCircle className="h-6 w-6" />
-            </button>
-          </div>
+      <Dialog.Root open={true}>
+        <Dialog.Content style={{ maxWidth: '600px' }}>
+          <Dialog.Title>
+            {session.sub_subject.subject.title} - {session.sub_subject.title}
+          </Dialog.Title>
+          
+          <Box mt="2" mb="4">
+            <Text size="2" color="gray">
+              {format(addDays(new Date(session.scheduled_date), 1), 'PPP', { locale: ptBR })}
+            </Text>
+          </Box>
 
-          <div className="space-y-4">
-            <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+          <Flex direction="column" gap="4">
+            <Text size="4" weight="medium">
               Registre seu desempenho
-            </h4>
+            </Text>
             
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <Box>
+              <Text as="label" size="2" weight="medium" mb="1" style={{ display: 'block' }}>
                 Total de questões estudadas
-              </label>
-              <input
+              </Text>
+              <TextField.Root
                 type="number"
                 min="0"
-                value={manualQuestions.total}
+                value={manualQuestions.total.toString()}
                 onChange={(e) => setManualQuestions(prev => ({ ...prev, total: parseInt(e.target.value) || 0 }))}
-                className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white sm:text-sm"
               />
-            </div>
+            </Box>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <Box>
+              <Text as="label" size="2" weight="medium" mb="1" style={{ display: 'block' }}>
                 Número de questões corretas
-              </label>
-              <input
+              </Text>
+              <TextField.Root
                 type="number"
                 min="0"
                 max={manualQuestions.total}
-                value={manualQuestions.correct}
+                value={manualQuestions.correct.toString()}
                 onChange={(e) => setManualQuestions(prev => ({ ...prev, correct: parseInt(e.target.value) || 0 }))}
-                className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white sm:text-sm"
               />
-            </div>
+            </Box>
 
             {error && (
-              <div className="text-sm text-red-600 dark:text-red-400">
+              <Text size="2" color="red">
                 {error}
-              </div>
+              </Text>
             )}
 
-            <div className="flex justify-between pt-4">
-              <button
-                onClick={() => setStudyMode(null)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600"
-              >
+            <Flex justify="between" mt="4">
+              <Button variant="outline" onClick={() => setStudyMode(null)}>
                 Voltar
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={handleManualComplete}
                 disabled={submitting || manualQuestions.total === 0}
-                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 dark:bg-indigo-500 rounded-md hover:bg-indigo-700 dark:hover:bg-indigo-600 disabled:opacity-50"
               >
                 {submitting ? 'Salvando...' : 'Salvar'}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+              </Button>
+            </Flex>
+          </Flex>
+        </Dialog.Content>
+      </Dialog.Root>
     );
   }
 
@@ -414,100 +404,120 @@ export default function QuizModal({ session, onClose, onComplete }: QuizModalPro
   const question = questions[currentQuestion];
 
   return (
-    <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-2xl w-full">
-        <div className="flex justify-between items-start mb-6">
-          <div>
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-              {session.sub_subject.subject.title} - {session.sub_subject.title}
-            </h3>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              {format(addDays(new Date(session.scheduled_date), 1), 'PPP', { locale: ptBR })}
-            </p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Questão {currentQuestion + 1} de {questions.length}
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-400"
+    <Dialog.Root open={true}>
+      <Dialog.Content style={{ maxWidth: '700px' }}>
+        <Dialog.Title>
+          {session.sub_subject.subject.title} - {session.sub_subject.title}
+        </Dialog.Title>
+        
+        <Box mt="2" mb="4">
+          <Text size="2" color="gray">
+            {format(addDays(new Date(session.scheduled_date), 1), 'PPP', { locale: ptBR })}
+          </Text>
+          <Text size="2" color="gray">
+            Questão {currentQuestion + 1} de {questions.length}
+          </Text>
+        </Box>
+
+        <Box mb="6">
+          <Text size="4" weight="medium" mb="4" style={{ display: 'block' }}>
+            {question.content}
+          </Text>
+          
+          <RadioGroup.Root
+            value={question.selectedAnswer || ''}
+            onValueChange={handleAnswerSelect}
+            disabled={reviewMode}
           >
-            <XCircle className="h-6 w-6" />
-          </button>
-        </div>
+            <Flex direction="column" gap="3">
+              {question.options.map((option, index) => (
+                <Box
+                  key={index}
+                  p="3"
+                  style={{
+                    borderRadius: '8px',
+                    border: reviewMode
+                      ? question.selectedAnswer === option
+                        ? option === question.correctAnswer
+                          ? '2px solid var(--green-8)'
+                          : '2px solid var(--red-8)'
+                        : option === question.correctAnswer
+                        ? '2px solid var(--green-8)'
+                        : '1px solid var(--gray-6)'
+                      : question.selectedAnswer === option
+                      ? '2px solid var(--indigo-8)'
+                      : '1px solid var(--gray-6)',
+                    backgroundColor: reviewMode
+                      ? question.selectedAnswer === option
+                        ? option === question.correctAnswer
+                          ? 'var(--green-3)'
+                          : 'var(--red-3)'
+                        : option === question.correctAnswer
+                        ? 'var(--green-3)'
+                        : 'var(--gray-2)'
+                      : question.selectedAnswer === option
+                      ? 'var(--indigo-3)'
+                      : 'var(--gray-2)',
+                    cursor: reviewMode ? 'default' : 'pointer'
+                  }}
+                  onClick={() => !reviewMode && handleAnswerSelect(option)}
+                >
+                  <Flex justify="between" align="center">
+                    <RadioGroup.Item value={option} style={{ display: 'none' }} />
+                    <Text size="2" weight="medium">
+                      {['A', 'B', 'C', 'D'][index]}) {option}
+                    </Text>
+                    {reviewMode && (
+                      <>
+                        {question.selectedAnswer === option && option === question.correctAnswer && (
+                          <CheckCircle size={20} color="var(--green-9)" />
+                        )}
+                        {question.selectedAnswer === option && option !== question.correctAnswer && (
+                          <XIcon size={20} color="var(--red-9)" />
+                        )}
+                        {question.selectedAnswer !== option && option === question.correctAnswer && (
+                          <CheckCircle size={20} color="var(--green-9)" />
+                        )}
+                      </>
+                    )}
+                  </Flex>
+                </Box>
+              ))}
+            </Flex>
+          </RadioGroup.Root>
+        </Box>
 
-        <div className="mb-6">
-          <p className="text-lg font-medium text-gray-900 dark:text-white mb-4">{question.content}</p>
-          <div className="space-y-3">
-            {question.options.map((option, index) => (
-              <button
-                key={index}
-                onClick={() => handleAnswerSelect(option)}
-                disabled={reviewMode}
-                className={`w-full text-left p-4 rounded-lg border ${
-                  reviewMode
-                    ? question.selectedAnswer === option
-                      ? option === question.correctAnswer
-                        ? 'border-green-600 bg-green-50 dark:border-green-500 dark:bg-green-900/50'
-                        : 'border-red-600 bg-red-50 dark:border-red-500 dark:bg-red-900/50'
-                      : option === question.correctAnswer
-                      ? 'border-green-600 bg-green-50 dark:border-green-500 dark:bg-green-900/50'
-                      : 'border-gray-300 dark:border-gray-600'
-                    : question.selectedAnswer === option
-                    ? 'border-indigo-600 bg-indigo-50 dark:border-indigo-500 dark:bg-indigo-900/50'
-                    : 'border-gray-300 dark:border-gray-600 hover:border-indigo-300 dark:hover:border-indigo-500'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">
-                    {['A', 'B', 'C', 'D'][index]}) {option}
-                  </span>
-                  {reviewMode && (
-                    <>
-                      {question.selectedAnswer === option && option === question.correctAnswer && (
-                        <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-500" />
-                      )}
-                      {question.selectedAnswer === option && option !== question.correctAnswer && (
-                        <XIcon className="h-5 w-5 text-red-600 dark:text-red-500" />
-                      )}
-                      {question.selectedAnswer !== option && option === question.correctAnswer && (
-                        <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-500" />
-                      )}
-                    </>
-                  )}
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="flex justify-between">
-          <button
+        <Flex justify="between">
+          <Button
+            variant="outline"
             onClick={() => setCurrentQuestion(Math.max(0, currentQuestion - 1))}
             disabled={currentQuestion === 0}
-            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50"
           >
             Anterior
-          </button>
+          </Button>
           {!reviewMode && currentQuestion === questions.length - 1 ? (
-            <button
+            <Button
               onClick={handleQuizComplete}
               disabled={submitting || questions.some(q => !q.selectedAnswer)}
-              className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 dark:bg-indigo-500 border border-transparent rounded-md hover:bg-indigo-700 dark:hover:bg-indigo-600 disabled:opacity-50"
             >
               {submitting ? 'Salvando...' : 'Finalizar Quiz'}
-            </button>
+            </Button>
           ) : (
-            <button
+            <Button
               onClick={() => setCurrentQuestion(Math.min(questions.length - 1, currentQuestion + 1))}
               disabled={reviewMode ? currentQuestion === questions.length - 1 : !question.selectedAnswer}
-              className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 dark:bg-indigo-500 border border-transparent rounded-md hover:bg-indigo-700 dark:hover:bg-indigo-600 disabled:opacity-50"
             >
               Próxima
-            </button>
+            </Button>
           )}
-        </div>
-      </div>
-    </div>
+        </Flex>
+
+        <Flex justify="end" mt="4">
+          <Button variant="outline" onClick={onClose}>
+            Fechar
+          </Button>
+        </Flex>
+      </Dialog.Content>
+    </Dialog.Root>
   );
 }
