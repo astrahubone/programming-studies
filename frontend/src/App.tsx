@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { Box } from '@radix-ui/themes';
 import Login from './pages/Login';
 import AdminLogin from './pages/admin/Login';
 import Register from './pages/Register';
@@ -38,7 +39,7 @@ function App() {
   return (
     <ThemeProvider>
       <Router>
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <Box style={{ minHeight: '100vh', backgroundColor: 'var(--gray-1)' }}>
           <Routes>
             {/* Public routes */}
             <Route
@@ -158,7 +159,7 @@ function App() {
               }
             />
           </Routes>
-        </div>
+        </Box>
       </Router>
     </ThemeProvider>
   );

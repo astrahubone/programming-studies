@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import Layout from "../components/Layout";
+import { Box, Flex, Text, Button, Card, TextField, Select, Dialog } from '@radix-ui/themes';
 import { Plus, Edit2, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import Layout from "../components/Layout";
 import { useAuth } from "../contexts/AuthContext";
 import { useSubjects } from "../hooks/api/useSubjects";
 import { toast } from "react-toastify";
@@ -119,28 +120,28 @@ export default function SubjectManager() {
   if (!user?.id) {
     return (
       <Layout>
-        <div className="p-6">
-          <div className="text-center text-gray-600">
-            Faça login para gerenciar suas matérias
-          </div>
-        </div>
+        <Box p="6">
+          <Flex justify="center" align="center" style={{ height: '200px' }}>
+            <Text color="gray">Faça login para gerenciar suas matérias</Text>
+          </Flex>
+        </Box>
       </Layout>
     );
   }
 
   return (
     <Layout>
-      <div className="p-6">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
+      <Box p="6">
+        <Flex justify="between" align="center" mb="6">
+          <Box>
+            <Text size="6" weight="bold" mb="1" style={{ display: 'block' }}>
               Gerenciador de Matérias
-            </h1>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            </Text>
+            <Text size="3" color="gray">
               Gerencie suas matérias e submatérias
-            </p>
-          </div>
-          <button
+            </Text>
+          </Box>
+          <Button
             onClick={() => {
               setEditingSubject(null);
               setSubjectTitle("");
@@ -148,46 +149,52 @@ export default function SubjectManager() {
               setSubSubjects([]);
               setIsModalOpen(true);
             }}
-            className="flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 dark:bg-indigo-500 rounded-md hover:bg-indigo-700 dark:hover:bg-indigo-600"
           >
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus size={16} />
             Adicionar matéria
-          </button>
-        </div>
+          </Button>
+        </Flex>
 
-        <div className="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md">
+        <Card size="3">
           {isLoading ? (
-            <div className="p-4 text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 dark:border-indigo-400 mx-auto"></div>
-            </div>
+            <Flex justify="center" align="center" p="4">
+              <Text>Carregando...</Text>
+            </Flex>
           ) : (
-            <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+            <Flex direction="column">
               {subjects?.map((subject) => (
-                <li key={subject.id} className="px-4 py-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center flex-1">
-                      <button
+                <Box key={subject.id} p="4" style={{ borderBottom: '1px solid var(--gray-6)' }}>
+                  <Flex justify="between" align="center">
+                    <Flex align="center" gap="3">
+                      <Button
+                        variant="ghost"
+                        size="1"
                         onClick={() => toggleSubjectExpansion(subject.id)}
-                        className="mr-2 text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400"
                       >
                         {expandedSubjects.has(subject.id) ? (
-                          <ChevronUp className="h-5 w-5" />
+                          <ChevronUp size={16} />
                         ) : (
-                          <ChevronDown className="h-5 w-5" />
+                          <ChevronDown size={16} />
                         )}
-                      </button>
-                      <div className="flex items-center">
-                        <div 
-                          className="w-4 h-4 rounded-full mr-2"
-                          style={{ backgroundColor: subject.color || DEFAULT_COLORS.fácil }}
+                      </Button>
+                      <Flex align="center" gap="2">
+                        <Box 
+                          style={{ 
+                            width: '16px', 
+                            height: '16px', 
+                            borderRadius: '50%',
+                            backgroundColor: subject.color || DEFAULT_COLORS.fácil 
+                          }}
                         />
-                        <span className="text-lg font-medium text-gray-900 dark:text-white">
+                        <Text size="4" weight="medium">
                           {subject.title}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <button
+                        </Text>
+                      </Flex>
+                    </Flex>
+                    <Flex gap="2">
+                      <Button
+                        variant="ghost"
+                        size="2"
                         onClick={() => {
                           setEditingSubject(subject);
                           setSubjectTitle(subject.title);
@@ -200,183 +207,175 @@ export default function SubjectManager() {
                           );
                           setIsModalOpen(true);
                         }}
-                        className="p-2 text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400"
                       >
-                        <Edit2 className="h-5 w-5" />
-                      </button>
-                      <button
+                        <Edit2 size={16} />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        color="red"
+                        size="2"
                         onClick={() => handleDeleteSubject(subject.id)}
-                        className="p-2 text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400"
                       >
-                        <Trash2 className="h-5 w-5" />
-                      </button>
-                    </div>
-                  </div>
+                        <Trash2 size={16} />
+                      </Button>
+                    </Flex>
+                  </Flex>
 
                   {expandedSubjects.has(subject.id) && (
-                    <div className="mt-4 ml-7 space-y-2">
-                      {subject.sub_subjects.map((subSubject) => (
-                        <div
-                          key={subSubject.id}
-                          className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-md"
-                        >
-                          <span className="text-sm font-medium text-gray-900 dark:text-white">
-                            {subSubject.title}
-                          </span>
-                          <span
-                            className={`px-2 py-1 text-xs font-medium rounded-full ${
-                              subSubject.difficulty === "fácil"
-                                ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-                                : subSubject.difficulty === "médio"
-                                ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-                                : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-                            }`}
-                          >
-                            {subSubject.difficulty}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+                    <Box mt="4" ml="7">
+                      <Flex direction="column" gap="2">
+                        {subject.sub_subjects.map((subSubject) => (
+                          <Card key={subSubject.id} variant="surface" size="2">
+                            <Flex justify="between" align="center">
+                              <Text size="3" weight="medium">
+                                {subSubject.title}
+                              </Text>
+                              <Box
+                                style={{
+                                  padding: '4px 8px',
+                                  borderRadius: '12px',
+                                  fontSize: '12px',
+                                  fontWeight: 'medium',
+                                  backgroundColor: 
+                                    subSubject.difficulty === "fácil" ? 'var(--blue-3)' :
+                                    subSubject.difficulty === "médio" ? 'var(--yellow-3)' :
+                                    'var(--red-3)',
+                                  color:
+                                    subSubject.difficulty === "fácil" ? 'var(--blue-11)' :
+                                    subSubject.difficulty === "médio" ? 'var(--yellow-11)' :
+                                    'var(--red-11)'
+                                }}
+                              >
+                                {subSubject.difficulty}
+                              </Box>
+                            </Flex>
+                          </Card>
+                        ))}
+                      </Flex>
+                    </Box>
                   )}
-                </li>
+                </Box>
               ))}
-            </ul>
+            </Flex>
           )}
-        </div>
+        </Card>
 
-        {isModalOpen && (
-          <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-2xl w-full">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-                {editingSubject ? "Editar Matéria" : "Adicionar Nova Matéria"}
-              </h3>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div>
-                  <label
-                    htmlFor="title"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >
+        <Dialog.Root open={isModalOpen} onOpenChange={setIsModalOpen}>
+          <Dialog.Content style={{ maxWidth: '600px' }}>
+            <Dialog.Title>
+              {editingSubject ? "Editar Matéria" : "Adicionar Nova Matéria"}
+            </Dialog.Title>
+            
+            <form onSubmit={handleSubmit}>
+              <Flex direction="column" gap="4" mt="4">
+                <Box>
+                  <Text as="label" size="2" weight="medium" mb="1" style={{ display: 'block' }}>
                     Título da Matéria
-                  </label>
-                  <input
-                    type="text"
-                    id="title"
+                  </Text>
+                  <TextField.Root
                     value={subjectTitle}
                     onChange={(e) => setSubjectTitle(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white sm:text-sm"
+                    size="3"
                   />
-                </div>
+                </Box>
 
-                <div>
-                  <label
-                    htmlFor="color"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >
+                <Box>
+                  <Text as="label" size="2" weight="medium" mb="1" style={{ display: 'block' }}>
                     Cor no Calendário
-                  </label>
-                  <div className="mt-1 flex items-center space-x-2">
+                  </Text>
+                  <Flex align="center" gap="2">
                     <input
                       type="color"
-                      id="color"
                       value={subjectColor}
                       onChange={(e) => setSubjectColor(e.target.value)}
-                      className="h-8 w-16 rounded border border-gray-300 dark:border-gray-600 cursor-pointer"
+                      style={{ height: '32px', width: '64px', borderRadius: '4px', border: '1px solid var(--gray-6)', cursor: 'pointer' }}
                     />
-                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                    <Text size="2" color="gray">
                       Escolha uma cor para identificar esta matéria no calendário
-                    </span>
-                  </div>
-                </div>
+                    </Text>
+                  </Flex>
+                </Box>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <Box>
+                  <Text as="label" size="2" weight="medium" mb="2" style={{ display: 'block' }}>
                     Submatérias
-                  </label>
+                  </Text>
                   {subSubjects.map((sub, index) => (
-                    <div key={index} className="flex space-x-4 mb-4">
-                      <input
-                        type="text"
+                    <Flex key={index} gap="2" mb="2">
+                      <TextField.Root
                         value={sub.title}
                         onChange={(e) => {
                           const newSubSubjects = [...subSubjects];
                           newSubSubjects[index].title = e.target.value;
                           setSubSubjects(newSubSubjects);
                         }}
-                        className="flex-1 rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white sm:text-sm"
                         placeholder="Título da Submatéria"
+                        style={{ flex: 1 }}
                       />
-                      <select
+                      <Select.Root
                         value={sub.difficulty}
-                        onChange={(e) => {
+                        onValueChange={(value: "fácil" | "médio" | "difícil") => {
                           const newSubSubjects = [...subSubjects];
-                          newSubSubjects[index].difficulty = e.target.value as
-                            | "fácil"
-                            | "médio"
-                            | "difícil";
+                          newSubSubjects[index].difficulty = value;
                           setSubSubjects(newSubSubjects);
                         }}
-                        className="rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white sm:text-sm"
                       >
-                        <option value="fácil">Fácil</option>
-                        <option value="médio">Médio</option>
-                        <option value="difícil">Difícil</option>
-                      </select>
-                      <button
+                        <Select.Trigger style={{ width: '120px' }} />
+                        <Select.Content>
+                          <Select.Item value="fácil">Fácil</Select.Item>
+                          <Select.Item value="médio">Médio</Select.Item>
+                          <Select.Item value="difícil">Difícil</Select.Item>
+                        </Select.Content>
+                      </Select.Root>
+                      <Button
                         type="button"
+                        variant="ghost"
+                        color="red"
+                        size="2"
                         onClick={() => {
                           setSubSubjects(
                             subSubjects.filter((_, i) => i !== index)
                           );
                         }}
-                        className="p-2 text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400"
                       >
-                        <Trash2 className="h-5 w-5" />
-                      </button>
-                    </div>
+                        <Trash2 size={16} />
+                      </Button>
+                    </Flex>
                   ))}
-                  <button
+                  <Button
                     type="button"
+                    variant="outline"
                     onClick={() => {
                       setSubSubjects([
                         ...subSubjects,
                         { title: "", difficulty: "fácil" },
                       ]);
                     }}
-                    className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600"
                   >
-                    <Plus className="h-4 w-4 mr-2" />
+                    <Plus size={16} />
                     Adicionar submatéria
-                  </button>
-                </div>
+                  </Button>
+                </Box>
 
-                <div className="flex justify-end space-x-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsModalOpen(false);
-                      setEditingSubject(null);
-                    }}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 dark:bg-indigo-500 border border-transparent rounded-md hover:bg-indigo-700 dark:hover:bg-indigo-600 disabled:opacity-50"
-                  >
+                <Flex justify="end" gap="3" mt="4">
+                  <Dialog.Close>
+                    <Button variant="outline" type="button">
+                      Cancelar
+                    </Button>
+                  </Dialog.Close>
+                  <Button type="submit" disabled={loading}>
                     {loading
                       ? "Salvando..."
                       : editingSubject
                       ? "Salvar alterações"
                       : "Criar Matéria"}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-      </div>
+                  </Button>
+                </Flex>
+              </Flex>
+            </form>
+          </Dialog.Content>
+        </Dialog.Root>
+      </Box>
     </Layout>
   );
 }

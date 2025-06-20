@@ -10,9 +10,9 @@ import {
   BookOpen,
   ArrowLeft,
 } from 'lucide-react';
+import { Box, Flex, Text, Button, Separator } from '@radix-ui/themes';
 import { useAuth } from '../../contexts/AuthContext';
 import ThemeToggle from '../ThemeToggle';
-import clsx from 'clsx';
 
 const navigation = [
   { name: 'Dashboard', href: '/admin', icon: Home },
@@ -37,72 +37,78 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   };
 
   return (
-    <div className="flex h-screen">
-      <div className="w-64 flex-shrink-0 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-center h-16 px-4">
-          <BookOpen className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
-          <span className="ml-2 text-lg font-semibold text-gray-900 dark:text-white">
-            Admin Panel
-          </span>
-        </div>
+    <Flex height="100vh">
+      <Box style={{ width: '256px', flexShrink: 0, borderRight: '1px solid var(--gray-6)' }}>
+        <Box p="4">
+          <Flex align="center" gap="2">
+            <BookOpen size={24} />
+            <Text size="4" weight="bold">Admin Panel</Text>
+          </Flex>
+        </Box>
 
-        <nav className="flex-1 px-2 py-4 space-y-1">
+        <Box p="2">
           {/* Student View Link */}
-          <Link
-            to="/dashboard"
-            className="flex items-center px-2 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white group"
+          <Button
+            asChild
+            variant="ghost"
+            color="gray"
+            size="2"
+            style={{ width: '100%', justifyContent: 'flex-start', marginBottom: '8px' }}
           >
-            <ArrowLeft className="mr-3 h-5 w-5 text-gray-400 group-hover:text-gray-500 dark:text-gray-400 dark:group-hover:text-gray-300" />
-            Student View
-          </Link>
+            <Link to="/dashboard">
+              <ArrowLeft size={16} />
+              Student View
+            </Link>
+          </Button>
 
-          <div className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
+          <Separator size="4" my="2" />
 
-          {navigation.map((item) => {
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.name}
-                to={item.href}
-                className={clsx(
-                  location.pathname === item.href
-                    ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-200'
-                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white',
-                  'group flex items-center px-2 py-2 text-sm font-medium rounded-md'
-                )}
-              >
-                <Icon
-                  className={clsx(
-                    location.pathname === item.href
-                      ? 'text-indigo-600 dark:text-indigo-200'
-                      : 'text-gray-400 group-hover:text-gray-500 dark:text-gray-400 dark:group-hover:text-gray-300',
-                    'mr-3 h-5 w-5'
-                  )}
-                />
-                {item.name}
-              </Link>
-            );
-          })}
-        </nav>
+          <Flex direction="column" gap="1">
+            {navigation.map((item) => {
+              const Icon = item.icon;
+              const isActive = location.pathname === item.href;
+              
+              return (
+                <Button
+                  key={item.name}
+                  asChild
+                  variant={isActive ? "soft" : "ghost"}
+                  color={isActive ? "indigo" : "gray"}
+                  size="2"
+                  style={{ justifyContent: 'flex-start' }}
+                >
+                  <Link to={item.href}>
+                    <Icon size={16} />
+                    {item.name}
+                  </Link>
+                </Button>
+              );
+            })}
+          </Flex>
+        </Box>
 
-        <div className="flex-shrink-0 p-4 border-t border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-sm text-gray-500 dark:text-gray-400">Tema</span>
+        <Box p="4" style={{ marginTop: 'auto' }}>
+          <Separator size="4" mb="4" />
+          <Flex justify="between" align="center" mb="4">
+            <Text size="2" color="gray">Tema</Text>
             <ThemeToggle />
-          </div>
-          <button
+          </Flex>
+          <Button
+            variant="ghost"
+            color="gray"
+            size="2"
             onClick={handleSignOut}
-            className="flex items-center w-full px-2 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white"
+            style={{ width: '100%', justifyContent: 'flex-start' }}
           >
-            <LogOut className="mr-3 h-5 w-5 text-gray-400 dark:text-gray-500" />
+            <LogOut size={16} />
             Sign out
-          </button>
-        </div>
-      </div>
+          </Button>
+        </Box>
+      </Box>
 
-      <div className="flex-1 overflow-auto bg-gray-100 dark:bg-gray-900">
+      <Box flexGrow="1" style={{ overflow: 'auto', backgroundColor: 'var(--gray-2)' }}>
         {children}
-      </div>
-    </div>
+      </Box>
+    </Flex>
   );
 }

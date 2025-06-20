@@ -3,9 +3,10 @@ import FullCalendar from '@fullcalendar/react';
 import ptBrLocale from '@fullcalendar/core/locales/pt-br';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
+import { Box, Flex, Text, Button, Card } from '@radix-ui/themes';
+import { CheckCircle, RotateCcw } from 'lucide-react';
 import Layout from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
-import { CheckCircle, RotateCcw } from 'lucide-react';
 import QuizModal from '../components/QuizModal';
 import { toast } from 'react-toastify';
 import { useStudySessions } from '../hooks/api/useStudySessions';
@@ -39,7 +40,7 @@ export default function Dashboard() {
 
   async function handleReset() {
     if (!user) {
-      toast.error('Você precisa estars logado para resetar os dados', {
+      toast.error('Você precisa estar logado para resetar os dados', {
         position: "top-right",
         autoClose: 3000,
         hideProgressBar: false,
@@ -108,40 +109,45 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <div className="p-6">
-        <div className="mb-6 flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Calendário de estudo</h1>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+      <Box p="6">
+        <Flex justify="between" align="center" mb="6">
+          <Box>
+            <Text size="6" weight="bold" mb="1" style={{ display: 'block' }}>
+              Calendário de estudo
+            </Text>
+            <Text size="3" color="gray">
               Acompanhe suas sessões de estudo e seu progresso
-            </p>
-          </div>
-          <button
+            </Text>
+          </Box>
+          <Button
+            color="red"
+            variant="solid"
             onClick={handleReset}
             disabled={resetting || isLoading}
-            className="flex items-center px-4 py-2 text-sm font-medium text-white bg-red-600 dark:bg-red-500 rounded-md hover:bg-red-700 dark:hover:bg-red-600 disabled:opacity-50"
           >
-            <RotateCcw className={`h-4 w-4 mr-2 ${resetting ? 'animate-spin' : ''}`} />
+            <RotateCcw size={16} style={{ animation: resetting ? 'spin 1s linear infinite' : 'none' }} />
             {resetting ? 'Resetando...' : 'Resetar Dados'}
-          </button>
-        </div>
+          </Button>
+        </Flex>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <div className="mb-4 flex gap-4">
-            <div className="flex items-center">
-              <div className="w-4 h-4 rounded-full bg-green-500 mr-2"></div>
-              <span className="text-sm text-gray-600 dark:text-gray-400">Concluído</span>
-            </div>
-          </div>
+        <Card size="3">
+          <Box mb="4">
+            <Flex gap="4">
+              <Flex align="center" gap="2">
+                <Box style={{ width: '16px', height: '16px', borderRadius: '50%', backgroundColor: '#10B981' }} />
+                <Text size="2" color="gray">Concluído</Text>
+              </Flex>
+            </Flex>
+          </Box>
 
           {isLoading ? (
-            <div className="mt-8 flex justify-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 dark:border-indigo-400"></div>
-            </div>
+            <Flex justify="center" align="center" style={{ height: '200px' }}>
+              <Text>Carregando...</Text>
+            </Flex>
           ) : error ? (
-            <div className="mt-8 text-center text-red-600 dark:text-red-400">
-              Erro ao carregar sessões de estudo
-            </div>
+            <Flex justify="center" align="center" style={{ height: '200px' }}>
+              <Text color="red">Erro ao carregar sessões de estudo</Text>
+            </Flex>
           ) : (
             <FullCalendar
               plugins={[dayGridPlugin, interactionPlugin]}
@@ -156,9 +162,9 @@ export default function Dashboard() {
               eventContent={(eventInfo) => {
                 const completed = eventInfo.event.extendedProps.completed;
                 return (
-                  <div className="flex items-center gap-1 p-1">
-                    {completed && <CheckCircle className="w-4 h-4 text-white" />}
-                    <span className="text-sm text-white truncate">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px' }}>
+                    {completed && <CheckCircle size={16} color="white" />}
+                    <span style={{ fontSize: '14px', color: 'white', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {eventInfo.event.title}
                     </span>
                   </div>
@@ -169,7 +175,7 @@ export default function Dashboard() {
               className="fc-theme-custom dark:fc-theme-dark"
             />
           )}
-        </div>
+        </Card>
 
         {selectedSession && (
           <QuizModal
@@ -180,7 +186,7 @@ export default function Dashboard() {
             }}
           />
         )}
-      </div>
+      </Box>
     </Layout>
   );
 }
