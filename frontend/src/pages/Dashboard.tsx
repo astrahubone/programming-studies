@@ -135,7 +135,7 @@ export default function Dashboard() {
             <Flex gap="4">
               <Flex align="center" gap="2">
                 <Box style={{ width: '16px', height: '16px', borderRadius: '50%', backgroundColor: '#10B981' }} />
-                <Text size="2" color="gray">Concluídos</Text>
+                <Text size="2" color="gray">Concluído</Text>
               </Flex>
             </Flex>
           </Box>
