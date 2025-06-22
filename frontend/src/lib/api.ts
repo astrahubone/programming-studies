@@ -2,7 +2,7 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 
 const api = axios.create({
-  baseURL: 'https://revizium-server.onrender.com/api',
+  baseURL: 'https://programming-studies-server.onrender.com/api',
   headers: {
     'Content-Type': 'application/json',
   },
