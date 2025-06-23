@@ -81,10 +81,6 @@ export default function StudyConfig() {
     }
   };
 
-  const handleSelectAllTechnologies = (checked: boolean) => {
-    setTechnologies(prev => prev.map(tech => ({ ...tech, selected: checked })));
-  };
-
   const handleDayToggle = (dayName: string, selected: boolean) => {
     setStudyDays(prev => prev.map(day => 
       day.name === dayName ? { ...day, selected } : day
@@ -110,20 +106,17 @@ export default function StudyConfig() {
     ));
   };
 
-  // Validation logic - Fixed
+  // Fixed validation logic - only check days and technologies
   const selectedDays = studyDays.filter(day => day.selected);
   const selectedTechs = technologies.filter(tech => tech.selected);
   const hasValidHours = selectedDays.length === 0 || selectedDays.every(day => day.hours >= 1 && !day.hasError);
 
+  // Button is enabled when: at least one day selected AND at least one technology selected AND valid hours
   const isFormValid = selectedDays.length > 0 && 
                      selectedTechs.length > 0 && 
-                     hasValidHours &&
-                     selectedSubjects.length > 0;
+                     hasValidHours;
 
-  // Technology select all state
-  const allTechsSelected = technologies.every(tech => tech.selected);
-  const someTechsSelected = technologies.some(tech => tech.selected);
-  const techSelectAllState = allTechsSelected ? true : (someTechsSelected ? 'indeterminate' : false);
+  const selectedTechCount = technologies.filter(tech => tech.selected).length;
 
   async function handleGenerateSchedule() {
     if (!isFormValid) {
@@ -160,18 +153,22 @@ export default function StudyConfig() {
           progress: undefined,
           theme: "dark",
         });
-      } else if (selectedSubjects.length === 0) {
-        toast.error("Selecione pelo menos um assunto", {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-          progress: undefined,
-          theme: "dark",
-        });
       }
+      return;
+    }
+
+    // Check if we have subjects to work with
+    if (selectedSubjects.length === 0 && subSubjects.length > 0) {
+      toast.error("Selecione pelo menos um assunto", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: "dark",
+      });
       return;
     }
 
@@ -261,7 +258,6 @@ export default function StudyConfig() {
   }
 
   const totalHours = selectedDays.reduce((sum, day) => sum + day.hours, 0);
-  const selectedTechCount = technologies.filter(tech => tech.selected).length;
 
   return (
     <Layout>
@@ -367,20 +363,9 @@ export default function StudyConfig() {
 
               {/* Technologies Section */}
               <Box>
-                <Flex justify="between" align="center" mb="4">
-                  <Text size="4" weight="medium">
-                    💻 Tecnologias que deseja estudar
-                  </Text>
-                  <Flex align="center" gap="2">
-                    <Checkbox
-                      checked={techSelectAllState}
-                      onCheckedChange={(checked) => handleSelectAllTechnologies(!!checked)}
-                    />
-                    <Text size="2" color="gray">
-                      Selecionar todas
-                    </Text>
-                  </Flex>
-                </Flex>
+                <Text size="4" weight="medium" mb="4" style={{ display: 'block' }}>
+                  💻 Tecnologias que deseja estudar
+                </Text>
                 <Text size="2" color="gray" mb="4" style={{ display: 'block' }}>
                   Todas as tecnologias estão selecionadas por padrão. Desmarque as que você já domina ou não deseja estudar.
                 </Text>
