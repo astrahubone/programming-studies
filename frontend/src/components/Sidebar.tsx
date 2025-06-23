@@ -1,11 +1,12 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { BookOpen, Calendar, Settings, BarChart2, LogOut, LayoutDashboard } from 'lucide-react';
+import { BookOpen, Calendar, Settings, BarChart2, LogOut, LayoutDashboard, Home } from 'lucide-react';
 import { Box, Flex, Text, Button, Separator } from '@radix-ui/themes';
 import { useAuth } from '../contexts/AuthContext';
 import ThemeToggle from './ThemeToggle';
 
 const navigation = [
+  { name: "Início", href: "/inicio", icon: Home },
   { name: "Calendário", href: "/dashboard", icon: Calendar },
   { name: "Gerenciador de Matérias", href: "/subjects", icon: BookOpen },
   { name: "Configurações dos Estudos", href: "/study-config", icon: Settings },

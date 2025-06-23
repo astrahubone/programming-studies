@@ -6,6 +6,7 @@ import { Box } from '@radix-ui/themes';
 import Login from './pages/Login';
 import AdminLogin from './pages/admin/Login';
 import Register from './pages/Register';
+import Inicio from './pages/Inicio';
 import Dashboard from './pages/Dashboard';
 import SubjectManager from './pages/SubjectManager';
 import StudyConfig from './pages/StudyConfig';
@@ -48,7 +49,7 @@ function App() {
                 !session ? (
                   <Landing />
                 ) : (
-                  <Navigate to={isAdmin ? "/admin" : "/dashboard"} replace />
+                  <Navigate to={isAdmin ? "/admin" : "/inicio"} replace />
                 )
               }
             />
@@ -56,7 +57,7 @@ function App() {
               path="/login"
               element={
                 session ? (
-                  <Navigate to={isAdmin ? "/admin" : "/dashboard"} replace />
+                  <Navigate to={isAdmin ? "/admin" : "/inicio"} replace />
                 ) : (
                   <Login />
                 )
@@ -66,7 +67,7 @@ function App() {
               path="/admin/login"
               element={
                 session ? (
-                  <Navigate to={isAdmin ? "/admin" : "/dashboard"} replace />
+                  <Navigate to={isAdmin ? "/admin" : "/inicio"} replace />
                 ) : (
                   <AdminLogin />
                 )
@@ -76,7 +77,7 @@ function App() {
               path="/register"
               element={
                 session ? (
-                  <Navigate to={isAdmin ? "/admin" : "/dashboard"} replace />
+                  <Navigate to={isAdmin ? "/admin" : "/inicio"} replace />
                 ) : (
                   <Register />
                 )
@@ -119,6 +120,14 @@ function App() {
 
             {/* User routes */}
             <Route
+              path="/inicio"
+              element={
+                <PrivateRoute>
+                  <Inicio />
+                </PrivateRoute>
+              }
+            />
+            <Route
               path="/dashboard"
               element={
                 <PrivateRoute>
@@ -155,7 +164,7 @@ function App() {
             <Route
               path="*"
               element={
-                <Navigate to={session ? (isAdmin ? "/admin" : "/dashboard") : "/"} replace />
+                <Navigate to={session ? (isAdmin ? "/admin" : "/inicio") : "/"} replace />
               }
             />
           </Routes>
