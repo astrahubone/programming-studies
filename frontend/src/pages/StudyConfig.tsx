@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import { Calendar, Code, Database, Cloud, Shield, Globe, Palette, CheckCircle } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
@@ -35,6 +36,7 @@ interface Technology {
 
 export default function StudyConfig() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { subjects: { data: subjectsData } } = useSubjects();
   const { createStudySession } = useStudySessions();
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
@@ -226,8 +228,14 @@ export default function StudyConfig() {
         draggable: true,
         theme: "light",
       });
+      
+      // Clear form state
       setSelectedSubjects([]);
       setShowPreferences(true);
+      
+      // Navigate to Calendar tab after successful generation
+      navigate('/dashboard');
+      
     } catch (error) {
       console.error("Erro ao gerar cronograma:", error);
       toast.error("Falha ao gerar cronograma de estudo", {
