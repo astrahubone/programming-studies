@@ -83,6 +83,10 @@ export default function StudyConfig() {
     }
   };
 
+  const handleSelectAllTechnologies = (checked: boolean) => {
+    setTechnologies(prev => prev.map(tech => ({ ...tech, selected: checked })));
+  };
+
   const handleDayToggle = (dayName: string, selected: boolean) => {
     setStudyDays(prev => prev.map(day => 
       day.name === dayName ? { ...day, selected } : day
@@ -119,6 +123,7 @@ export default function StudyConfig() {
                      hasValidHours;
 
   const selectedTechCount = technologies.filter(tech => tech.selected).length;
+  const allTechnologiesSelected = selectedTechCount === technologies.length;
 
   async function handleGenerateSchedule() {
     if (!isFormValid) {
@@ -371,9 +376,20 @@ export default function StudyConfig() {
 
               {/* Technologies Section */}
               <Box>
-                <Text size="4" weight="medium" mb="4" style={{ display: 'block' }}>
-                  💻 Tecnologias que deseja estudar
-                </Text>
+                <Flex justify="between" align="center" mb="4">
+                  <Text size="4" weight="medium">
+                    💻 Tecnologias que deseja estudar
+                  </Text>
+                  <Flex align="center" gap="2">
+                    <Checkbox
+                      checked={allTechnologiesSelected}
+                      onCheckedChange={(checked) => handleSelectAllTechnologies(!!checked)}
+                    />
+                    <Text size="2" color="gray">
+                      Selecionar todas
+                    </Text>
+                  </Flex>
+                </Flex>
                 <Text size="2" color="gray" mb="4" style={{ display: 'block' }}>
                   Todas as tecnologias estão selecionadas por padrão. Desmarque as que você já domina ou não deseja estudar.
                 </Text>
