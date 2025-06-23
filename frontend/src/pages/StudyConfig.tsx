@@ -2,11 +2,11 @@ import { useState } from "react";
 import Layout from "../components/Layout";
 import { Calendar, Code, Database, Cloud, Shield, Globe, Palette, CheckCircle } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
-import { format, addDays } from "date-fns";
+import { format, addDays, startOfWeek, addWeeks } from "date-fns";
 import { toast } from "react-toastify";
 import { useSubjects } from "../hooks/api/useSubjects";
 import { useStudySessions } from "../hooks/api/useStudySessions";
-import { Box, Flex, Text, Button, Card, Switch, TextField, Checkbox } from '@radix-ui/themes';
+import { Box, Flex, Text, Button, Card, TextField, Checkbox } from '@radix-ui/themes';
 
 interface SubSubject {
   id: string;
@@ -22,6 +22,7 @@ interface StudyDay {
   label: string;
   selected: boolean;
   hours: number;
+  dayIndex: number; // 0 = Monday, 6 = Sunday
 }
 
 interface Technology {
@@ -40,18 +41,18 @@ export default function StudyConfig() {
   const [loading, setLoading] = useState(false);
   const [showPreferences, setShowPreferences] = useState(false);
 
-  // Study days configuration
+  // Study days configuration (Monday = 0, Sunday = 6)
   const [studyDays, setStudyDays] = useState<StudyDay[]>([
-    { name: 'monday', label: 'Segunda', selected: false, hours: 1 },
-    { name: 'tuesday', label: 'Terça', selected: false, hours: 1 },
-    { name: 'wednesday', label: 'Quarta', selected: false, hours: 1 },
-    { name: 'thursday', label: 'Quinta', selected: false, hours: 1 },
-    { name: 'friday', label: 'Sexta', selected: false, hours: 1 },
-    { name: 'saturday', label: 'Sábado', selected: false, hours: 1 },
-    { name: 'sunday', label: 'Domingo', selected: false, hours: 1 },
+    { name: 'monday', label: 'Segunda', selected: false, hours: 1, dayIndex: 0 },
+    { name: 'tuesday', label: 'Terça', selected: false, hours: 1, dayIndex: 1 },
+    { name: 'wednesday', label: 'Quarta', selected: false, hours: 1, dayIndex: 2 },
+    { name: 'thursday', label: 'Quinta', selected: false, hours: 1, dayIndex: 3 },
+    { name: 'friday', label: 'Sexta', selected: false, hours: 1, dayIndex: 4 },
+    { name: 'saturday', label: 'Sábado', selected: false, hours: 1, dayIndex: 5 },
+    { name: 'sunday', label: 'Domingo', selected: false, hours: 1, dayIndex: 6 },
   ]);
 
-  // Technologies configuration
+  // Technologies configuration - all selected by default
   const [technologies, setTechnologies] = useState<Technology[]>([
     { id: 'html', name: 'HTML', icon: Globe, selected: true },
     { id: 'css', name: 'CSS', icon: Palette, selected: true },
@@ -145,33 +146,43 @@ export default function StudyConfig() {
 
     setLoading(true);
     try {
+      // Create study sessions based on selected days, hours, and technologies
+      const studySessions = [];
       const selectedSubjectsData = subSubjects.filter((sub) =>
         selectedSubjects.includes(sub.id)
       );
 
-      const studySessions = selectedSubjectsData.flatMap((subject) => {
-        const reviewDays =
-          subject.difficulty === "fácil"
-            ? 7
-            : subject.difficulty === "médio"
-            ? 5
-            : 3;
+      // Calculate total hours per week
+      const totalWeeklyHours = selectedDays.reduce((sum, day) => sum + day.hours, 0);
+      
+      // Create a schedule for 4 weeks
+      for (let week = 0; week < 4; week++) {
+        const weekStart = startOfWeek(addWeeks(new Date(startDate), week), { weekStartsOn: 1 }); // Monday start
+        
+        selectedDays.forEach(day => {
+          const dayDate = addDays(weekStart, day.dayIndex);
+          
+          // For each hour on this day, assign a technology/subject
+          for (let hour = 0; hour < day.hours; hour++) {
+            // Cycle through selected technologies
+            const techIndex = (week * totalWeeklyHours + selectedDays.indexOf(day) * day.hours + hour) % selectedTechs.length;
+            const selectedTech = selectedTechs[techIndex];
+            
+            // Find a subject that matches this technology (or use first available)
+            const matchingSubject = selectedSubjectsData.find(sub => 
+              sub.title.toLowerCase().includes(selectedTech.name.toLowerCase()) ||
+              sub.subject.title.toLowerCase().includes(selectedTech.name.toLowerCase())
+            ) || selectedSubjectsData[0];
 
-        const initialSession = {
-          subSubjectId: subject.id,
-          scheduledDate: startDate,
-        };
-
-        const reviewSessions = Array.from({ length: 3 }, (_, index) => ({
-          subSubjectId: subject.id,
-          scheduledDate: format(
-            addDays(new Date(startDate), reviewDays * (index + 1)),
-            "yyyy-MM-dd"
-          ),
-        }));
-
-        return [initialSession, ...reviewSessions];
-      });
+            if (matchingSubject) {
+              studySessions.push({
+                subSubjectId: matchingSubject.id,
+                scheduledDate: format(dayDate, "yyyy-MM-dd"),
+              });
+            }
+          }
+        });
+      }
 
       // Create study sessions sequentially
       for (const session of studySessions) {
@@ -259,7 +270,8 @@ export default function StudyConfig() {
                           cursor: 'pointer',
                           minWidth: '120px',
                           backgroundColor: day.selected ? 'var(--indigo-9)' : 'var(--gray-3)',
-                          color: day.selected ? 'white' : 'var(--gray-12)'
+                          color: day.selected ? 'white' : 'var(--gray-12)',
+                          border: day.selected ? '2px solid var(--indigo-11)' : '1px solid var(--gray-6)'
                         }}
                         onClick={() => handleDayToggle(day.name, !day.selected)}
                       >
@@ -267,6 +279,7 @@ export default function StudyConfig() {
                           <Text size="2" weight="medium">
                             {day.label}
                           </Text>
+                          {day.selected && <CheckCircle size={16} style={{ marginLeft: '8px' }} />}
                         </Flex>
                       </Card>
                     ))}
@@ -296,8 +309,13 @@ export default function StudyConfig() {
                             </Text>
                           </Flex>
                         ))}
-                        <Text size="2" color="gray" mt="2">
-                          Total semanal: {totalHours} hora(s)
+                        <Text size="2" color="gray" mt="2" style={{ 
+                          padding: '8px 12px', 
+                          backgroundColor: 'var(--blue-3)', 
+                          borderRadius: '6px',
+                          color: 'var(--blue-11)'
+                        }}>
+                          📊 Total semanal: {totalHours} hora(s)
                         </Text>
                       </Flex>
                     </Box>
@@ -308,10 +326,10 @@ export default function StudyConfig() {
               {/* Technologies Section */}
               <Box>
                 <Text size="4" weight="medium" mb="4" style={{ display: 'block' }}>
-                  💻 Tecnologias para aprender
+                  💻 Tecnologias que deseja estudar
                 </Text>
                 <Text size="2" color="gray" mb="4" style={{ display: 'block' }}>
-                  Selecione as tecnologias que deseja incluir no seu plano de estudos
+                  Todas as tecnologias estão selecionadas por padrão. Desmarque as que você já domina ou não deseja estudar.
                 </Text>
                 
                 <Flex wrap="wrap" gap="3">
@@ -325,7 +343,8 @@ export default function StudyConfig() {
                           cursor: 'pointer',
                           minWidth: '140px',
                           backgroundColor: tech.selected ? 'var(--green-9)' : 'var(--gray-3)',
-                          color: tech.selected ? 'white' : 'var(--gray-12)'
+                          color: tech.selected ? 'white' : 'var(--gray-12)',
+                          border: tech.selected ? '2px solid var(--green-11)' : '1px solid var(--gray-6)'
                         }}
                         onClick={() => handleTechnologyToggle(tech.id, !tech.selected)}
                       >
@@ -340,8 +359,13 @@ export default function StudyConfig() {
                     );
                   })}
                 </Flex>
-                <Text size="2" color="gray" mt="3">
-                  {selectedTechCount} tecnologia(s) selecionada(s)
+                <Text size="2" color="gray" mt="3" style={{ 
+                  padding: '8px 12px', 
+                  backgroundColor: 'var(--green-3)', 
+                  borderRadius: '6px',
+                  color: 'var(--green-11)'
+                }}>
+                  ✅ {selectedTechCount} tecnologia(s) selecionada(s)
                 </Text>
               </Box>
 
@@ -381,7 +405,10 @@ export default function StudyConfig() {
                       <Card 
                         key={subject.id}
                         variant="surface"
-                        style={{ cursor: 'pointer' }}
+                        style={{ 
+                          cursor: 'pointer',
+                          border: selectedSubjects.includes(subject.id) ? '2px solid var(--indigo-9)' : '1px solid var(--gray-6)'
+                        }}
                         onClick={() => {
                           if (selectedSubjects.includes(subject.id)) {
                             setSelectedSubjects(prev => prev.filter(id => id !== subject.id));
@@ -461,6 +488,15 @@ export default function StudyConfig() {
             </Text>
             <Flex direction="column" gap="2">
               <Text size="2" color="gray">
+                • O sistema distribui as tecnologias selecionadas ao longo dos dias e horas escolhidos
+              </Text>
+              <Text size="2" color="gray">
+                • Cada hora de estudo é dedicada a uma tecnologia específica
+              </Text>
+              <Text size="2" color="gray">
+                • O cronograma é gerado para 4 semanas consecutivas
+              </Text>
+              <Text size="2" color="gray">
                 • Tópicos com nível fácil são revisados a cada 7 dias
               </Text>
               <Text size="2" color="gray">
@@ -468,9 +504,6 @@ export default function StudyConfig() {
               </Text>
               <Text size="2" color="gray">
                 • Tópicos com nível difícil são revisados a cada 3 dias
-              </Text>
-              <Text size="2" color="gray">
-                • Cada tópico tem 3 sessões de revisão agendadas automaticamente
               </Text>
               <Text size="2" color="gray">
                 • Você pode marcar tópicos como concluídos no calendário

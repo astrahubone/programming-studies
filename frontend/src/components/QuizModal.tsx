@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { XCircle, CheckCircle, XCircle as XIcon, RefreshCw } from 'lucide-react';
+import { XCircle, CheckCircle, XCircle as XIcon, RefreshCw, ExternalLink } from 'lucide-react';
 import { Box, Flex, Text, Button, Card, Dialog, TextField, RadioGroup } from '@radix-ui/themes';
 import { generateQuestions } from '../lib/openai';
 import { format, addDays } from 'date-fns';
@@ -34,7 +34,7 @@ interface QuizModalProps {
   onComplete: () => void;
 }
 
-type StudyMode = 'platform' | 'manual' | null;
+type StudyMode = 'platform' | 'manual' | 'study' | null;
 
 export default function QuizModal({ session, onClose, onComplete }: QuizModalProps) {
   const [studyMode, setStudyMode] = useState<StudyMode>(null);
@@ -220,6 +220,12 @@ export default function QuizModal({ session, onClose, onComplete }: QuizModalPro
     }
   }
 
+  function handleGoToStudyPage() {
+    // Temporarily redirect to Google as requested
+    window.open('https://google.com', '_blank');
+    onClose();
+  }
+
   if (loading) {
     return (
       <Dialog.Root open={true}>
@@ -287,8 +293,25 @@ export default function QuizModal({ session, onClose, onComplete }: QuizModalPro
 
           <Flex direction="column" gap="4">
             <Text size="4" weight="medium">
-              Como você deseja registrar seu estudo?
+              Como você deseja estudar hoje?
             </Text>
+            
+            <Card 
+              variant="surface" 
+              size="3" 
+              style={{ cursor: 'pointer' }}
+              onClick={() => handleGoToStudyPage()}
+            >
+              <Flex direction="column" gap="2">
+                <Flex align="center" gap="2">
+                  <ExternalLink size={20} />
+                  <Text size="3" weight="medium">Ir para a página de estudo</Text>
+                </Flex>
+                <Text size="2" color="gray">
+                  Acesse materiais de estudo e recursos para este tópico
+                </Text>
+              </Flex>
+            </Card>
             
             <Card 
               variant="surface" 
