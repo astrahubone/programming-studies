@@ -1,11 +1,12 @@
 import { useState } from "react";
 import Layout from "../components/Layout";
-import { Calendar } from "lucide-react";
+import { Calendar, Code, Database, Cloud, Shield, Globe, Palette, CheckCircle } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { format, addDays } from "date-fns";
 import { toast } from "react-toastify";
 import { useSubjects } from "../hooks/api/useSubjects";
 import { useStudySessions } from "../hooks/api/useStudySessions";
+import { Box, Flex, Text, Button, Card, Switch, TextField, Checkbox } from '@radix-ui/themes';
 
 interface SubSubject {
   id: string;
@@ -16,6 +17,20 @@ interface SubSubject {
   };
 }
 
+interface StudyDay {
+  name: string;
+  label: string;
+  selected: boolean;
+  hours: number;
+}
+
+interface Technology {
+  id: string;
+  name: string;
+  icon: React.ComponentType<{ size?: number }>;
+  selected: boolean;
+}
+
 export default function StudyConfig() {
   const { user } = useAuth();
   const { subjects: { data: subjectsData } } = useSubjects();
@@ -23,6 +38,29 @@ export default function StudyConfig() {
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [startDate, setStartDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [loading, setLoading] = useState(false);
+  const [showPreferences, setShowPreferences] = useState(false);
+
+  // Study days configuration
+  const [studyDays, setStudyDays] = useState<StudyDay[]>([
+    { name: 'monday', label: 'Segunda', selected: false, hours: 1 },
+    { name: 'tuesday', label: 'Terça', selected: false, hours: 1 },
+    { name: 'wednesday', label: 'Quarta', selected: false, hours: 1 },
+    { name: 'thursday', label: 'Quinta', selected: false, hours: 1 },
+    { name: 'friday', label: 'Sexta', selected: false, hours: 1 },
+    { name: 'saturday', label: 'Sábado', selected: false, hours: 1 },
+    { name: 'sunday', label: 'Domingo', selected: false, hours: 1 },
+  ]);
+
+  // Technologies configuration
+  const [technologies, setTechnologies] = useState<Technology[]>([
+    { id: 'html', name: 'HTML', icon: Globe, selected: true },
+    { id: 'css', name: 'CSS', icon: Palette, selected: true },
+    { id: 'javascript', name: 'JavaScript', icon: Code, selected: true },
+    { id: 'react', name: 'React', icon: Code, selected: true },
+    { id: 'security', name: 'Segurança', icon: Shield, selected: true },
+    { id: 'data', name: 'Dados', icon: Database, selected: true },
+    { id: 'cloud', name: 'Cloud', icon: Cloud, selected: true },
+  ]);
 
   const subSubjects = subjectsData?.flatMap(subject => 
     subject.sub_subjects.map(sub => ({
@@ -41,7 +79,56 @@ export default function StudyConfig() {
     }
   };
 
+  const handleDayToggle = (dayName: string, selected: boolean) => {
+    setStudyDays(prev => prev.map(day => 
+      day.name === dayName ? { ...day, selected } : day
+    ));
+  };
+
+  const handleHoursChange = (dayName: string, hours: number) => {
+    setStudyDays(prev => prev.map(day => 
+      day.name === dayName ? { ...day, hours: Math.max(1, Math.min(12, hours)) } : day
+    ));
+  };
+
+  const handleTechnologyToggle = (techId: string, selected: boolean) => {
+    setTechnologies(prev => prev.map(tech => 
+      tech.id === techId ? { ...tech, selected } : tech
+    ));
+  };
+
   async function handleGenerateSchedule() {
+    const selectedDays = studyDays.filter(day => day.selected);
+    const selectedTechs = technologies.filter(tech => tech.selected);
+
+    if (selectedDays.length === 0) {
+      toast.error("Selecione pelo menos um dia da semana para estudar", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: "dark",
+      });
+      return;
+    }
+
+    if (selectedTechs.length === 0) {
+      toast.error("Selecione pelo menos uma tecnologia para estudar", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: "dark",
+      });
+      return;
+    }
+
     if (selectedSubjects.length === 0) {
       toast.error("Selecione pelo menos um assunto", {
         position: "top-right",
@@ -101,6 +188,7 @@ export default function StudyConfig() {
         theme: "light",
       });
       setSelectedSubjects([]);
+      setShowPreferences(true);
     } catch (error) {
       console.error("Erro ao gerar cronograma:", error);
       toast.error("Falha ao gerar cronograma de estudo", {
@@ -121,155 +209,279 @@ export default function StudyConfig() {
   if (!user?.id) {
     return (
       <Layout>
-        <div className="p-6">
-          <div className="text-center text-gray-600">
-            Faça login para gerenciar suas matérias
-          </div>
-        </div>
+        <Box p="6">
+          <Flex justify="center" align="center" style={{ height: '200px' }}>
+            <Text color="gray">Faça login para gerenciar suas matérias</Text>
+          </Flex>
+        </Box>
       </Layout>
     );
   }
 
+  const totalHours = studyDays.filter(day => day.selected).reduce((sum, day) => sum + day.hours, 0);
+  const selectedTechCount = technologies.filter(tech => tech.selected).length;
+
   return (
     <Layout>
-      <div className="p-6">
-        <div className="mb-6">
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
+      <Box p="6">
+        <Box mb="6">
+          <Text size="6" weight="bold" mb="1" style={{ display: 'block' }}>
             Configuração do estudo
-          </h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Gere seu cronograma de estudos personalizado
-          </p>
-        </div>
+          </Text>
+          <Text size="3" color="gray">
+            Configure suas preferências para gerar um cronograma personalizado
+          </Text>
+        </Box>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow divide-y divide-gray-200 dark:divide-gray-700">
-          <div className="p-6">
-            <h2 className="text-lg font-médio text-gray-900 dark:text-white mb-4">
+        <Card size="3">
+          <Box p="6">
+            <Text size="5" weight="medium" mb="6" style={{ display: 'block' }}>
               Gerador de cronograma
-            </h2>
+            </Text>
 
-            <div className="space-y-6">
-              <div>
-                <label
-                  htmlFor="start-date"
-                  className="block text-sm font-médio text-gray-700 dark:text-gray-300"
-                >
-                  Data de início
-                </label>
-                <input
+            <Flex direction="column" gap="8">
+              {/* Study Days Section */}
+              <Box>
+                <Text size="4" weight="medium" mb="4" style={{ display: 'block' }}>
+                  📅 Dias disponíveis para estudar
+                </Text>
+                <Text size="2" color="gray" mb="4" style={{ display: 'block' }}>
+                  Selecione os dias da semana em que você pode estudar
+                </Text>
+                
+                <Flex direction="column" gap="4">
+                  <Flex wrap="wrap" gap="3">
+                    {studyDays.map((day) => (
+                      <Card 
+                        key={day.name} 
+                        variant={day.selected ? "solid" : "surface"}
+                        style={{ 
+                          cursor: 'pointer',
+                          minWidth: '120px',
+                          backgroundColor: day.selected ? 'var(--indigo-9)' : 'var(--gray-3)',
+                          color: day.selected ? 'white' : 'var(--gray-12)'
+                        }}
+                        onClick={() => handleDayToggle(day.name, !day.selected)}
+                      >
+                        <Flex align="center" justify="center" p="3">
+                          <Text size="2" weight="medium">
+                            {day.label}
+                          </Text>
+                        </Flex>
+                      </Card>
+                    ))}
+                  </Flex>
+
+                  {studyDays.some(day => day.selected) && (
+                    <Box>
+                      <Text size="3" weight="medium" mb="3" style={{ display: 'block' }}>
+                        Horas de estudo por dia:
+                      </Text>
+                      <Flex direction="column" gap="2">
+                        {studyDays.filter(day => day.selected).map((day) => (
+                          <Flex key={day.name} align="center" gap="3">
+                            <Text size="2" style={{ minWidth: '80px' }}>
+                              {day.label}:
+                            </Text>
+                            <TextField.Root
+                              type="number"
+                              min="1"
+                              max="12"
+                              value={day.hours.toString()}
+                              onChange={(e) => handleHoursChange(day.name, parseInt(e.target.value) || 1)}
+                              style={{ width: '80px' }}
+                            />
+                            <Text size="2" color="gray">
+                              hora(s)
+                            </Text>
+                          </Flex>
+                        ))}
+                        <Text size="2" color="gray" mt="2">
+                          Total semanal: {totalHours} hora(s)
+                        </Text>
+                      </Flex>
+                    </Box>
+                  )}
+                </Flex>
+              </Box>
+
+              {/* Technologies Section */}
+              <Box>
+                <Text size="4" weight="medium" mb="4" style={{ display: 'block' }}>
+                  💻 Tecnologias para aprender
+                </Text>
+                <Text size="2" color="gray" mb="4" style={{ display: 'block' }}>
+                  Selecione as tecnologias que deseja incluir no seu plano de estudos
+                </Text>
+                
+                <Flex wrap="wrap" gap="3">
+                  {technologies.map((tech) => {
+                    const IconComponent = tech.icon;
+                    return (
+                      <Card 
+                        key={tech.id}
+                        variant={tech.selected ? "solid" : "surface"}
+                        style={{ 
+                          cursor: 'pointer',
+                          minWidth: '140px',
+                          backgroundColor: tech.selected ? 'var(--green-9)' : 'var(--gray-3)',
+                          color: tech.selected ? 'white' : 'var(--gray-12)'
+                        }}
+                        onClick={() => handleTechnologyToggle(tech.id, !tech.selected)}
+                      >
+                        <Flex align="center" justify="center" gap="2" p="3">
+                          <IconComponent size={16} />
+                          <Text size="2" weight="medium">
+                            {tech.name}
+                          </Text>
+                          {tech.selected && <CheckCircle size={14} />}
+                        </Flex>
+                      </Card>
+                    );
+                  })}
+                </Flex>
+                <Text size="2" color="gray" mt="3">
+                  {selectedTechCount} tecnologia(s) selecionada(s)
+                </Text>
+              </Box>
+
+              {/* Start Date Section */}
+              <Box>
+                <Text size="4" weight="medium" mb="4" style={{ display: 'block' }}>
+                  📆 Data de início
+                </Text>
+                <TextField.Root
                   type="date"
-                  id="start-date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  min={format(new Date(), "yyyy-MM-dd")}
-                  //className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white sm:text-sm"
+                  style={{ maxWidth: '200px' }}
                 />
-              </div>
+              </Box>
 
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <label className="block text-sm font-médio text-gray-700 dark:text-gray-300">
-                    Selecione as matérias que deseja estudar
-                  </label>
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id="select-all"
+              {/* Subject Selection */}
+              <Box>
+                <Flex justify="between" align="center" mb="4">
+                  <Text size="4" weight="medium">
+                    📚 Matérias para estudar
+                  </Text>
+                  <Flex align="center" gap="2">
+                    <Checkbox
                       checked={selectedSubjects.length === subSubjects.length}
-                      onChange={(e) => handleSelectAll(e.target.checked)}
-                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 rounded"
+                      onCheckedChange={(checked) => handleSelectAll(!!checked)}
                     />
-                    <label htmlFor="select-all" className="ml-2 text-sm text-gray-600 dark:text-gray-400">
+                    <Text size="2" color="gray">
                       Selecionar todas
-                    </label>
-                  </div>
-                </div>
-                <div className="space-y-2 max-h-96 overflow-y-auto">
-                  {subSubjects.map((subject) => (
-                    <div
-                      key={subject.id}
-                      className="flex items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-md hover:bg-gray-100 dark:hover:bg-gray-600"
-                    >
-                      <input
-                        type="checkbox"
-                        id={subject.id}
-                        checked={selectedSubjects.includes(subject.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedSubjects([
-                              ...selectedSubjects,
-                              subject.id,
-                            ]);
+                    </Text>
+                  </Flex>
+                </Flex>
+                
+                <Box style={{ maxHeight: '300px', overflow: 'auto' }}>
+                  <Flex direction="column" gap="2">
+                    {subSubjects.map((subject) => (
+                      <Card 
+                        key={subject.id}
+                        variant="surface"
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => {
+                          if (selectedSubjects.includes(subject.id)) {
+                            setSelectedSubjects(prev => prev.filter(id => id !== subject.id));
                           } else {
-                            setSelectedSubjects(
-                              selectedSubjects.filter((id) => id !== subject.id)
-                            );
+                            setSelectedSubjects(prev => [...prev, subject.id]);
                           }
                         }}
-                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 rounded"
-                      />
-                      <label htmlFor={subject.id} className="ml-3 flex-1">
-                        <span className="block text-sm font-médio text-gray-900 dark:text-white">
-                          {subject.title}
-                        </span>
-                        <span className="block text-sm text-gray-500 dark:text-gray-400">
-                          {subject.subject.title} • {subject.difficulty}
-                        </span>
-                      </label>
-                      <span
-                        className={`px-2 py-1 text-xs font-médio rounded-full ${
-                          subject.difficulty === "fácil"
-                            ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-                            : subject.difficulty === "médio"
-                            ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-                            : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-                        }`}
                       >
-                        {subject.difficulty === "fácil"
-                          ? "Review in 7 days"
-                          : subject.difficulty === "médio"
-                          ? "Review in 5 days"
-                          : "Review in 3 days"}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+                        <Flex align="center" gap="3" p="3">
+                          <Checkbox
+                            checked={selectedSubjects.includes(subject.id)}
+                            onCheckedChange={() => {}}
+                          />
+                          <Flex direction="column" flexGrow="1">
+                            <Text size="3" weight="medium">
+                              {subject.title}
+                            </Text>
+                            <Text size="2" color="gray">
+                              {subject.subject.title} • {subject.difficulty}
+                            </Text>
+                          </Flex>
+                          <Box
+                            style={{
+                              padding: '4px 8px',
+                              borderRadius: '12px',
+                              fontSize: '12px',
+                              fontWeight: 'medium',
+                              backgroundColor: 
+                                subject.difficulty === "fácil" ? 'var(--blue-3)' :
+                                subject.difficulty === "médio" ? 'var(--yellow-3)' :
+                                'var(--red-3)',
+                              color:
+                                subject.difficulty === "fácil" ? 'var(--blue-11)' :
+                                subject.difficulty === "médio" ? 'var(--yellow-11)' :
+                                'var(--red-11)'
+                            }}
+                          >
+                            {subject.difficulty === "fácil"
+                              ? "Revisão em 7 dias"
+                              : subject.difficulty === "médio"
+                              ? "Revisão em 5 dias"
+                              : "Revisão em 3 dias"}
+                          </Box>
+                        </Flex>
+                      </Card>
+                    ))}
+                  </Flex>
+                </Box>
+              </Box>
 
-              <div className="flex justify-end">
-                <button
+              {/* Action Buttons */}
+              <Flex gap="3" justify="end">
+                {showPreferences && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowPreferences(false)}
+                  >
+                    Editar preferências
+                  </Button>
+                )}
+                <Button
                   onClick={handleGenerateSchedule}
                   disabled={loading || selectedSubjects.length === 0}
-                  className="flex items-center px-4 py-2 text-sm font-médio text-white bg-indigo-600 dark:bg-indigo-500 rounded-md hover:bg-indigo-700 dark:hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-900 disabled:opacity-50"
+                  size="3"
                 >
-                  <Calendar className="h-4 w-4 mr-2" />
+                  <Calendar size={16} />
                   {loading ? "Gerando cronograma..." : "Gerar Cronograma"}
-                </button>
-              </div>
-            </div>
-          </div>
+                </Button>
+              </Flex>
+            </Flex>
+          </Box>
 
-          <div className="p-6">
-            <h2 className="text-lg font-médio text-gray-900 dark:text-white mb-4">
-              Como funciona o cronograma de estudos?
-            </h2>
-            <div className="prose prose-sm text-gray-500 dark:text-gray-400">
-              <ul className="list-disc pl-5 space-y-2">
-                <li>Tópicos com nível fácil são revisados ​​a cada 7 dias</li>
-                <li>Tópicos com nível médio são revisados ​​a cada 5 dias</li>
-                <li>Tópicos com nível difícil são revisados ​​a cada 3 dias</li>
-                <li>
-                  Cada tópico tem 3 sessões de revisão agendadas automaticamente
-                </li>
-                <li>Você pode marcar tópicos como concluídos no calendário</li>
-                <li>
-                  Acompanhe seu progresso e desempenho na página Desempenho
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </div>
+          {/* Information Section */}
+          <Box p="6" style={{ backgroundColor: 'var(--gray-2)', borderTop: '1px solid var(--gray-6)' }}>
+            <Text size="4" weight="medium" mb="4" style={{ display: 'block' }}>
+              ℹ️ Como funciona o cronograma de estudos?
+            </Text>
+            <Flex direction="column" gap="2">
+              <Text size="2" color="gray">
+                • Tópicos com nível fácil são revisados a cada 7 dias
+              </Text>
+              <Text size="2" color="gray">
+                • Tópicos com nível médio são revisados a cada 5 dias
+              </Text>
+              <Text size="2" color="gray">
+                • Tópicos com nível difícil são revisados a cada 3 dias
+              </Text>
+              <Text size="2" color="gray">
+                • Cada tópico tem 3 sessões de revisão agendadas automaticamente
+              </Text>
+              <Text size="2" color="gray">
+                • Você pode marcar tópicos como concluídos no calendário
+              </Text>
+              <Text size="2" color="gray">
+                • Acompanhe seu progresso e desempenho na página Performance
+              </Text>
+            </Flex>
+          </Box>
+        </Card>
+      </Box>
     </Layout>
   );
 }
