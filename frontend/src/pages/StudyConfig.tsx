@@ -23,6 +23,7 @@ interface StudyDay {
   selected: boolean;
   hours: number;
   dayIndex: number; // 0 = Monday, 6 = Sunday
+  hasError: boolean;
 }
 
 interface Technology {
@@ -43,13 +44,13 @@ export default function StudyConfig() {
 
   // Study days configuration (Monday = 0, Sunday = 6)
   const [studyDays, setStudyDays] = useState<StudyDay[]>([
-    { name: 'monday', label: 'Segunda', selected: false, hours: 1, dayIndex: 0 },
-    { name: 'tuesday', label: 'Terça', selected: false, hours: 1, dayIndex: 1 },
-    { name: 'wednesday', label: 'Quarta', selected: false, hours: 1, dayIndex: 2 },
-    { name: 'thursday', label: 'Quinta', selected: false, hours: 1, dayIndex: 3 },
-    { name: 'friday', label: 'Sexta', selected: false, hours: 1, dayIndex: 4 },
-    { name: 'saturday', label: 'Sábado', selected: false, hours: 1, dayIndex: 5 },
-    { name: 'sunday', label: 'Domingo', selected: false, hours: 1, dayIndex: 6 },
+    { name: 'monday', label: 'Segunda', selected: false, hours: 1, dayIndex: 0, hasError: false },
+    { name: 'tuesday', label: 'Terça', selected: false, hours: 1, dayIndex: 1, hasError: false },
+    { name: 'wednesday', label: 'Quarta', selected: false, hours: 1, dayIndex: 2, hasError: false },
+    { name: 'thursday', label: 'Quinta', selected: false, hours: 1, dayIndex: 3, hasError: false },
+    { name: 'friday', label: 'Sexta', selected: false, hours: 1, dayIndex: 4, hasError: false },
+    { name: 'saturday', label: 'Sábado', selected: false, hours: 1, dayIndex: 5, hasError: false },
+    { name: 'sunday', label: 'Domingo', selected: false, hours: 1, dayIndex: 6, hasError: false },
   ]);
 
   // Technologies configuration - all selected by default
@@ -86,9 +87,16 @@ export default function StudyConfig() {
     ));
   };
 
-  const handleHoursChange = (dayName: string, hours: number) => {
+  const handleHoursChange = (dayName: string, value: string) => {
+    const hours = parseInt(value) || 0;
+    const hasError = hours < 1;
+    
     setStudyDays(prev => prev.map(day => 
-      day.name === dayName ? { ...day, hours: Math.max(1, Math.min(12, hours)) } : day
+      day.name === dayName ? { 
+        ...day, 
+        hours: Math.max(0, Math.min(12, hours)), 
+        hasError 
+      } : day
     ));
   };
 
@@ -98,49 +106,65 @@ export default function StudyConfig() {
     ));
   };
 
+  // Validation logic
+  const selectedDays = studyDays.filter(day => day.selected);
+  const selectedTechs = technologies.filter(tech => tech.selected);
+  const hasValidHours = selectedDays.every(day => day.hours >= 1);
+  const hasHourErrors = selectedDays.some(day => day.hasError);
+
+  const isFormValid = selectedDays.length > 0 && 
+                     selectedTechs.length > 0 && 
+                     hasValidHours && 
+                     !hasHourErrors &&
+                     selectedSubjects.length > 0;
+
   async function handleGenerateSchedule() {
-    const selectedDays = studyDays.filter(day => day.selected);
-    const selectedTechs = technologies.filter(tech => tech.selected);
-
-    if (selectedDays.length === 0) {
-      toast.error("Selecione pelo menos um dia da semana para estudar", {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
-        theme: "dark",
-      });
-      return;
-    }
-
-    if (selectedTechs.length === 0) {
-      toast.error("Selecione pelo menos uma tecnologia para estudar", {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
-        theme: "dark",
-      });
-      return;
-    }
-
-    if (selectedSubjects.length === 0) {
-      toast.error("Selecione pelo menos um assunto", {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
-        theme: "dark",
-      });
+    if (!isFormValid) {
+      if (selectedDays.length === 0) {
+        toast.error("Selecione pelo menos um dia da semana para estudar", {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+          theme: "dark",
+        });
+      } else if (selectedTechs.length === 0) {
+        toast.error("Selecione pelo menos uma tecnologia para estudar", {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+          theme: "dark",
+        });
+      } else if (!hasValidHours || hasHourErrors) {
+        toast.error("Todos os dias selecionados devem ter pelo menos 1 hora de estudo", {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+          theme: "dark",
+        });
+      } else if (selectedSubjects.length === 0) {
+        toast.error("Selecione pelo menos um assunto", {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+          theme: "dark",
+        });
+      }
       return;
     }
 
@@ -229,7 +253,7 @@ export default function StudyConfig() {
     );
   }
 
-  const totalHours = studyDays.filter(day => day.selected).reduce((sum, day) => sum + day.hours, 0);
+  const totalHours = selectedDays.reduce((sum, day) => sum + day.hours, 0);
   const selectedTechCount = technologies.filter(tech => tech.selected).length;
 
   return (
@@ -285,29 +309,40 @@ export default function StudyConfig() {
                     ))}
                   </Flex>
 
-                  {studyDays.some(day => day.selected) && (
+                  {selectedDays.length > 0 && (
                     <Box>
                       <Text size="3" weight="medium" mb="3" style={{ display: 'block' }}>
                         Horas de estudo por dia:
                       </Text>
-                      <Flex direction="column" gap="2">
-                        {studyDays.filter(day => day.selected).map((day) => (
-                          <Flex key={day.name} align="center" gap="3">
-                            <Text size="2" style={{ minWidth: '80px' }}>
-                              {day.label}:
-                            </Text>
-                            <TextField.Root
-                              type="number"
-                              min="1"
-                              max="12"
-                              value={day.hours.toString()}
-                              onChange={(e) => handleHoursChange(day.name, parseInt(e.target.value) || 1)}
-                              style={{ width: '80px' }}
-                            />
-                            <Text size="2" color="gray">
-                              hora(s)
-                            </Text>
-                          </Flex>
+                      <Flex direction="column" gap="3">
+                        {selectedDays.map((day) => (
+                          <Box key={day.name}>
+                            <Flex align="center" gap="3">
+                              <Text size="2" style={{ minWidth: '80px' }}>
+                                {day.label}:
+                              </Text>
+                              <TextField.Root
+                                type="number"
+                                min="1"
+                                max="12"
+                                value={day.hours.toString()}
+                                onChange={(e) => handleHoursChange(day.name, e.target.value)}
+                                style={{ 
+                                  width: '80px',
+                                  borderColor: day.hasError ? 'var(--red-8)' : undefined
+                                }}
+                                color={day.hasError ? "red" : undefined}
+                              />
+                              <Text size="2" color="gray">
+                                hora(s)
+                              </Text>
+                            </Flex>
+                            {day.hasError && (
+                              <Text size="1" color="red" mt="1" style={{ marginLeft: '83px' }}>
+                                O valor mínimo deve ser 1 hora.
+                              </Text>
+                            )}
+                          </Box>
                         ))}
                         <Text size="2" color="gray" mt="2" style={{ 
                           padding: '8px 12px', 
@@ -471,8 +506,12 @@ export default function StudyConfig() {
                 )}
                 <Button
                   onClick={handleGenerateSchedule}
-                  disabled={loading || selectedSubjects.length === 0}
+                  disabled={loading || !isFormValid}
                   size="3"
+                  style={{
+                    opacity: !isFormValid ? 0.5 : 1,
+                    cursor: !isFormValid ? 'not-allowed' : 'pointer'
+                  }}
                 >
                   <Calendar size={16} />
                   {loading ? "Gerando cronograma..." : "Gerar Cronograma"}
