@@ -39,8 +39,6 @@ export default function StudyConfig() {
   const navigate = useNavigate();
   const { subjects: { data: subjectsData } } = useSubjects();
   const { createStudySession } = useStudySessions();
-  const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
-  const [startDate, setStartDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [loading, setLoading] = useState(false);
   const [showPreferences, setShowPreferences] = useState(false);
 
@@ -74,14 +72,6 @@ export default function StudyConfig() {
       }
     }))
   ) || [];
-
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedSubjects(subSubjects.map(subject => subject.id));
-    } else {
-      setSelectedSubjects([]);
-    }
-  };
 
   const handleSelectAllTechnologies = (checked: boolean) => {
     setTechnologies(prev => prev.map(tech => ({ ...tech, selected: checked })));
@@ -164,35 +154,20 @@ export default function StudyConfig() {
       return;
     }
 
-    // Check if we have subjects to work with
-    if (selectedSubjects.length === 0 && subSubjects.length > 0) {
-      toast.error("Selecione pelo menos um assunto", {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
-        theme: "dark",
-      });
-      return;
-    }
-
     setLoading(true);
     try {
       // Create study sessions based on selected days, hours, and technologies
       const studySessions = [];
-      const selectedSubjectsData = subSubjects.filter((sub) =>
-        selectedSubjects.includes(sub.id)
-      );
+
+      // Use all available subjects if any exist
+      const availableSubjects = subSubjects.length > 0 ? subSubjects : [];
 
       // Calculate total hours per week
       const totalWeeklyHours = selectedDays.reduce((sum, day) => sum + day.hours, 0);
       
       // Create a schedule for 4 weeks
       for (let week = 0; week < 4; week++) {
-        const weekStart = startOfWeek(addWeeks(new Date(startDate), week), { weekStartsOn: 1 }); // Monday start
+        const weekStart = startOfWeek(addWeeks(new Date(), week), { weekStartsOn: 1 }); // Monday start
         
         selectedDays.forEach(day => {
           const dayDate = addDays(weekStart, day.dayIndex);
@@ -204,10 +179,13 @@ export default function StudyConfig() {
             const selectedTech = selectedTechs[techIndex];
             
             // Find a subject that matches this technology (or use first available)
-            const matchingSubject = selectedSubjectsData.find(sub => 
-              sub.title.toLowerCase().includes(selectedTech.name.toLowerCase()) ||
-              sub.subject.title.toLowerCase().includes(selectedTech.name.toLowerCase())
-            ) || selectedSubjectsData[0];
+            let matchingSubject = null;
+            if (availableSubjects.length > 0) {
+              matchingSubject = availableSubjects.find(sub => 
+                sub.title.toLowerCase().includes(selectedTech.name.toLowerCase()) ||
+                sub.subject.title.toLowerCase().includes(selectedTech.name.toLowerCase())
+              ) || availableSubjects[0];
+            }
 
             if (matchingSubject) {
               studySessions.push({
@@ -219,9 +197,12 @@ export default function StudyConfig() {
         });
       }
 
-      // Create study sessions sequentially
-      for (const session of studySessions) {
-        await createStudySession.mutateAsync(session);
+      // Only create sessions if we have subjects to work with
+      if (studySessions.length > 0) {
+        // Create study sessions sequentially
+        for (const session of studySessions) {
+          await createStudySession.mutateAsync(session);
+        }
       }
 
       toast.success("Cronograma de estudos gerado com sucesso!", {
@@ -235,7 +216,6 @@ export default function StudyConfig() {
       });
       
       // Clear form state
-      setSelectedSubjects([]);
       setShowPreferences(true);
       
       // Navigate to Calendar tab after successful generation
@@ -429,96 +409,6 @@ export default function StudyConfig() {
                 }}>
                   ✅ {selectedTechCount} tecnologia(s) selecionada(s)
                 </Text>
-              </Box>
-
-              {/* Start Date Section */}
-              <Box>
-                <Text size="4" weight="medium" mb="4" style={{ display: 'block' }}>
-                  📆 Data de início
-                </Text>
-                <TextField.Root
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  style={{ maxWidth: '200px' }}
-                />
-              </Box>
-
-              {/* Subject Selection */}
-              <Box>
-                <Flex justify="between" align="center" mb="4">
-                  <Text size="4" weight="medium">
-                    📚 Matérias para estudar
-                  </Text>
-                  <Flex align="center" gap="2">
-                    <Checkbox
-                      checked={selectedSubjects.length === subSubjects.length && subSubjects.length > 0}
-                      onCheckedChange={(checked) => handleSelectAll(!!checked)}
-                    />
-                    <Text size="2" color="gray">
-                      Selecionar todas
-                    </Text>
-                  </Flex>
-                </Flex>
-                
-                <Box style={{ maxHeight: '300px', overflow: 'auto' }}>
-                  <Flex direction="column" gap="2">
-                    {subSubjects.map((subject) => (
-                      <Card 
-                        key={subject.id}
-                        variant="surface"
-                        style={{ 
-                          cursor: 'pointer',
-                          border: selectedSubjects.includes(subject.id) ? '2px solid var(--indigo-9)' : '1px solid var(--gray-6)'
-                        }}
-                        onClick={() => {
-                          if (selectedSubjects.includes(subject.id)) {
-                            setSelectedSubjects(prev => prev.filter(id => id !== subject.id));
-                          } else {
-                            setSelectedSubjects(prev => [...prev, subject.id]);
-                          }
-                        }}
-                      >
-                        <Flex align="center" gap="3" p="3">
-                          <Checkbox
-                            checked={selectedSubjects.includes(subject.id)}
-                            onCheckedChange={() => {}}
-                          />
-                          <Flex direction="column" flexGrow="1">
-                            <Text size="3" weight="medium">
-                              {subject.title}
-                            </Text>
-                            <Text size="2" color="gray">
-                              {subject.subject.title} • {subject.difficulty}
-                            </Text>
-                          </Flex>
-                          <Box
-                            style={{
-                              padding: '4px 8px',
-                              borderRadius: '12px',
-                              fontSize: '12px',
-                              fontWeight: 'medium',
-                              backgroundColor: 
-                                subject.difficulty === "fácil" ? 'var(--blue-3)' :
-                                subject.difficulty === "médio" ? 'var(--yellow-3)' :
-                                'var(--red-3)',
-                              color:
-                                subject.difficulty === "fácil" ? 'var(--blue-11)' :
-                                subject.difficulty === "médio" ? 'var(--yellow-11)' :
-                                'var(--red-11)'
-                            }}
-                          >
-                            {subject.difficulty === "fácil"
-                              ? "Revisão em 7 dias"
-                              : subject.difficulty === "médio"
-                              ? "Revisão em 5 dias"
-                              : "Revisão em 3 dias"}
-                          </Box>
-                        </Flex>
-                      </Card>
-                    ))}
-                  </Flex>
-                </Box>
               </Box>
 
               {/* Action Buttons */}
