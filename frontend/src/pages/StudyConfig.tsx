@@ -535,15 +535,6 @@ export default function StudyConfig() {
                   {loading ? "Gerando cronograma..." : "Gerar Cronograma"}
                 </Button>
               </Flex>
-
-              {/* Debug Info - Remove in production */}
-              {process.env.NODE_ENV === 'development' && (
-                <Box p="3" style={{ backgroundColor: 'var(--gray-2)', borderRadius: '6px', fontSize: '12px' }}>
-                  <Text size="1" color="gray">
-                    Debug: Days: {selectedDays.length} | Techs: {selectedTechs.length} | Valid Hours: {hasValidHours.toString()} | Subjects: {selectedSubjects.length} | Valid: {isFormValid.toString()}
-                  </Text>
-                </Box>
-              )}
             </Flex>
           </Box>
 
