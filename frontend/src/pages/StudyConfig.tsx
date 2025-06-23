@@ -81,6 +81,10 @@ export default function StudyConfig() {
     }
   };
 
+  const handleSelectAllTechnologies = (checked: boolean) => {
+    setTechnologies(prev => prev.map(tech => ({ ...tech, selected: checked })));
+  };
+
   const handleDayToggle = (dayName: string, selected: boolean) => {
     setStudyDays(prev => prev.map(day => 
       day.name === dayName ? { ...day, selected } : day
@@ -106,17 +110,20 @@ export default function StudyConfig() {
     ));
   };
 
-  // Validation logic
+  // Validation logic - Fixed
   const selectedDays = studyDays.filter(day => day.selected);
   const selectedTechs = technologies.filter(tech => tech.selected);
-  const hasValidHours = selectedDays.every(day => day.hours >= 1);
-  const hasHourErrors = selectedDays.some(day => day.hasError);
+  const hasValidHours = selectedDays.length === 0 || selectedDays.every(day => day.hours >= 1 && !day.hasError);
 
   const isFormValid = selectedDays.length > 0 && 
                      selectedTechs.length > 0 && 
-                     hasValidHours && 
-                     !hasHourErrors &&
+                     hasValidHours &&
                      selectedSubjects.length > 0;
+
+  // Technology select all state
+  const allTechsSelected = technologies.every(tech => tech.selected);
+  const someTechsSelected = technologies.some(tech => tech.selected);
+  const techSelectAllState = allTechsSelected ? true : (someTechsSelected ? 'indeterminate' : false);
 
   async function handleGenerateSchedule() {
     if (!isFormValid) {
@@ -142,7 +149,7 @@ export default function StudyConfig() {
           progress: undefined,
           theme: "dark",
         });
-      } else if (!hasValidHours || hasHourErrors) {
+      } else if (!hasValidHours) {
         toast.error("Todos os dias selecionados devem ter pelo menos 1 hora de estudo", {
           position: "top-right",
           autoClose: 3000,
@@ -360,9 +367,20 @@ export default function StudyConfig() {
 
               {/* Technologies Section */}
               <Box>
-                <Text size="4" weight="medium" mb="4" style={{ display: 'block' }}>
-                  💻 Tecnologias que deseja estudar
-                </Text>
+                <Flex justify="between" align="center" mb="4">
+                  <Text size="4" weight="medium">
+                    💻 Tecnologias que deseja estudar
+                  </Text>
+                  <Flex align="center" gap="2">
+                    <Checkbox
+                      checked={techSelectAllState}
+                      onCheckedChange={(checked) => handleSelectAllTechnologies(!!checked)}
+                    />
+                    <Text size="2" color="gray">
+                      Selecionar todas
+                    </Text>
+                  </Flex>
+                </Flex>
                 <Text size="2" color="gray" mb="4" style={{ display: 'block' }}>
                   Todas as tecnologias estão selecionadas por padrão. Desmarque as que você já domina ou não deseja estudar.
                 </Text>
@@ -425,7 +443,7 @@ export default function StudyConfig() {
                   </Text>
                   <Flex align="center" gap="2">
                     <Checkbox
-                      checked={selectedSubjects.length === subSubjects.length}
+                      checked={selectedSubjects.length === subSubjects.length && subSubjects.length > 0}
                       onCheckedChange={(checked) => handleSelectAll(!!checked)}
                     />
                     <Text size="2" color="gray">
@@ -517,6 +535,15 @@ export default function StudyConfig() {
                   {loading ? "Gerando cronograma..." : "Gerar Cronograma"}
                 </Button>
               </Flex>
+
+              {/* Debug Info - Remove in production */}
+              {process.env.NODE_ENV === 'development' && (
+                <Box p="3" style={{ backgroundColor: 'var(--gray-2)', borderRadius: '6px', fontSize: '12px' }}>
+                  <Text size="1" color="gray">
+                    Debug: Days: {selectedDays.length} | Techs: {selectedTechs.length} | Valid Hours: {hasValidHours.toString()} | Subjects: {selectedSubjects.length} | Valid: {isFormValid.toString()}
+                  </Text>
+                </Box>
+              )}
             </Flex>
           </Box>
 
