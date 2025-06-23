@@ -39,6 +39,7 @@ export default function StudyConfig() {
   const navigate = useNavigate();
   const { subjects: { data: subjectsData } } = useSubjects();
   const { createStudySession } = useStudySessions();
+  const [startDate, setStartDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [loading, setLoading] = useState(false);
   const [showPreferences, setShowPreferences] = useState(false);
 
@@ -165,9 +166,9 @@ export default function StudyConfig() {
       // Calculate total hours per week
       const totalWeeklyHours = selectedDays.reduce((sum, day) => sum + day.hours, 0);
       
-      // Create a schedule for 4 weeks
+      // Create a schedule starting from the selected start date for 4 weeks
       for (let week = 0; week < 4; week++) {
-        const weekStart = startOfWeek(addWeeks(new Date(), week), { weekStartsOn: 1 }); // Monday start
+        const weekStart = startOfWeek(addWeeks(new Date(startDate), week), { weekStartsOn: 1 }); // Monday start
         
         selectedDays.forEach(day => {
           const dayDate = addDays(weekStart, day.dayIndex);
@@ -271,6 +272,22 @@ export default function StudyConfig() {
             </Text>
 
             <Flex direction="column" gap="8">
+              {/* Start Date Section */}
+              <Box>
+                <Text size="4" weight="medium" mb="4" style={{ display: 'block' }}>
+                  📅 Data de início
+                </Text>
+                <Text size="2" color="gray" mb="4" style={{ display: 'block' }}>
+                  Escolha quando você deseja começar seu cronograma de estudos
+                </Text>
+                <TextField.Root
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  style={{ maxWidth: '200px' }}
+                />
+              </Box>
+
               {/* Study Days Section */}
               <Box>
                 <Text size="4" weight="medium" mb="4" style={{ display: 'block' }}>
@@ -450,7 +467,7 @@ export default function StudyConfig() {
                 • Cada hora de estudo é dedicada a uma tecnologia específica
               </Text>
               <Text size="2" color="gray">
-                • O cronograma é gerado para 4 semanas consecutivas
+                • O cronograma é gerado para 4 semanas consecutivas a partir da data escolhida
               </Text>
               <Text size="2" color="gray">
                 • Tópicos com nível fácil são revisados a cada 7 dias
