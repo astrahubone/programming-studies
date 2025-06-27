@@ -95,6 +95,8 @@ export default function StudyConfig() {
     }
   }, [technologiesData]);
 
+  console.log(technologies, 'technologies')
+
   const subSubjects = subjectsData?.flatMap(subject => 
     subject.sub_subjects.map(sub => ({
       ...sub,
