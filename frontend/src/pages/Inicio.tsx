@@ -17,11 +17,11 @@ export default function Inicio() {
         <Flex direction="column" align="center" justify="center" style={{ minHeight: '60vh' }}>
           <Box mb="8" style={{ textAlign: 'center', maxWidth: '600px' }}>
             <Text size="8" weight="bold" mb="4" style={{ display: 'block' }}>
-              Welcome to Your Study Journey
+              Bem-vindo à sua Jornada de Estudos
             </Text>
             <Text size="4" color="gray" style={{ lineHeight: '1.6' }}>
-              This is the first step to building a study routine that fits your unique needs and goals. 
-              Start by creating your personalized study schedule and take control of your learning path.
+              Este é o primeiro passo para construir uma rotina de estudos que se adapta às suas necessidades e objetivos únicos. 
+              Comece criando seu cronograma de estudos personalizado e assuma o controle do seu caminho de aprendizado.
             </Text>
           </Box>
 
@@ -41,11 +41,11 @@ export default function Inicio() {
                   </Box>
                 </Flex>
                 <Text size="5" weight="medium" mb="3" style={{ display: 'block' }}>
-                  Ready to Get Started?
+                  Pronto para Começar?
                 </Text>
                 <Text size="3" color="gray" style={{ lineHeight: '1.5' }}>
-                  Create your customized study schedule based on your subjects, 
-                  difficulty levels, and preferred review intervals.
+                  Crie seu cronograma de estudos personalizado baseado nas suas matérias, 
+                  níveis de dificuldade e intervalos de revisão preferidos.
                 </Text>
               </Box>
 
@@ -55,7 +55,7 @@ export default function Inicio() {
                 style={{ width: '100%' }}
               >
                 <Calendar size={20} />
-                Create My Study Schedule
+                Criar Meu Cronograma de Estudos
                 <ArrowRight size={20} />
               </Button>
             </Flex>
@@ -70,7 +70,7 @@ export default function Inicio() {
             width: '100%'
           }}>
             <Text size="3" color="gray">
-              📌 Your personalized roadmap will appear here soon!
+              📌 Seu roteiro personalizado aparecerá aqui em breve!
             </Text>
           </Box>
         </Flex>
