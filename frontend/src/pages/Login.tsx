@@ -10,13 +10,19 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { signIn, disconnect, session } = useAuth();
+  const { signIn, disconnect, session, isAdmin } = useAuth();
 
   useEffect(() => {
     if (session) {
-      navigate('/');
+      console.log('Session detected in Login, redirecting...');
+      // Redirect based on user role
+      if (isAdmin) {
+        navigate('/admin', { replace: true });
+      } else {
+        navigate('/inicio', { replace: true });
+      }
     }
-  }, [session, navigate]);
+  }, [session, isAdmin, navigate]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -30,6 +36,7 @@ export default function Login() {
       setError('');
       setLoading(true);
       
+      console.log('Attempting login...');
       await signIn(email, password);
       
       toast.success('Login realizado com sucesso!', {
@@ -43,7 +50,7 @@ export default function Login() {
         theme: "light",
       });
       
-      // Navigation will be handled by the auth context
+      // Navigation will be handled by the useEffect above
     } catch (error: any) {
       console.error('Erro no login:', error);
       
@@ -74,8 +81,13 @@ export default function Login() {
     }
   }
 
+  // Don't render the login form if user is already authenticated
   if (session) {
-    return null;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 dark:border-indigo-400"></div>
+      </div>
+    );
   }
 
   return (
