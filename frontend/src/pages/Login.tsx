@@ -23,9 +23,10 @@ export default function Login() {
       setError('');
       setLoading(true);
       await signIn(email, password);
+      // Navigation will be handled by the useEffect when session updates
     } catch (error) {
       console.error('Erro no login:', error);
-      // Removed generic error message - API interceptors handle detailed error feedback
+      setError('Credenciais inválidas. Verifique seu email e senha.');
     } finally {
       setLoading(false);
     }

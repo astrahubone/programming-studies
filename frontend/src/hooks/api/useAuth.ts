@@ -19,12 +19,17 @@ export function useAuth() {
       const response = await api.post('/auth/login', data);
       return response.data;
     },
-    onSuccess: () => {
-      // Don't manually store token - let onAuthStateChange handle it
+    onSuccess: (data) => {
+      // Store the token manually since we're using custom API
+      if (data.session) {
+        localStorage.setItem('sb-cbqwhkjttgkckhrdwhnx-auth-token', JSON.stringify(data.session));
+      }
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['user'] });
     },
     onError: (error: any) => {
+      // Clear any stale tokens on login error
+      localStorage.removeItem('sb-cbqwhkjttgkckhrdwhnx-auth-token');
       toast.error(error.response?.data?.error || 'Failed to login');
     },
   });
@@ -34,12 +39,17 @@ export function useAuth() {
       const response = await api.post('/auth/register', data);
       return response.data;
     },
-    onSuccess: () => {
-      // Don't manually store token - let onAuthStateChange handle it
+    onSuccess: (data) => {
+      // Store the token manually since we're using custom API
+      if (data.session) {
+        localStorage.setItem('sb-cbqwhkjttgkckhrdwhnx-auth-token', JSON.stringify(data.session));
+      }
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['user'] });
     },
     onError: (error: any) => {
+      // Clear any stale tokens on register error
+      localStorage.removeItem('sb-cbqwhkjttgkckhrdwhnx-auth-token');
       toast.error(error.response?.data?.error || 'Failed to register');
     },
   });
@@ -47,10 +57,15 @@ export function useAuth() {
   const logout = useMutation({
     mutationFn: async () => {
       await api.post('/auth/logout');
-      // Don't manually remove token - let onAuthStateChange handle it
+    },
+    onSuccess: () => {
+      localStorage.removeItem('sb-cbqwhkjttgkckhrdwhnx-auth-token');
       queryClient.clear();
     },
     onError: (error: any) => {
+      // Even if logout fails on server, clear local data
+      localStorage.removeItem('sb-cbqwhkjttgkckhrdwhnx-auth-token');
+      queryClient.clear();
       toast.error(error.response?.data?.error || 'Failed to logout');
     },
   });

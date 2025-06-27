@@ -36,6 +36,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { data: user, isLoading: userLoading, error: userError } = useUser();
 
   useEffect(() => {
+    // Get initial session
+    const getInitialSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error('Error getting session:', error);
+          localStorage.removeItem('sb-cbqwhkjttgkckhrdwhnx-auth-token');
+        } else if (session) {
+          localStorage.setItem('sb-cbqwhkjttgkckhrdwhnx-auth-token', JSON.stringify(session));
+          setSession(session);
+        }
+      } catch (error) {
+        console.error('Error in getInitialSession:', error);
+        localStorage.removeItem('sb-cbqwhkjttgkckhrdwhnx-auth-token');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    getInitialSession();
+
     // Set up Supabase auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('Auth state changed:', event, session);
@@ -50,17 +71,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(null);
         setIsAdmin(false);
       }
-      
-      // Set loading to false after initial session is determined
-      if (event === 'INITIAL_SESSION' || loading) {
-        setLoading(false);
-      }
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [loading]);
+  }, []);
 
   useEffect(() => {
     if (userError?.response?.status === 401) {
@@ -77,18 +93,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   const signIn = async (email: string, password: string) => {
-    // Let the auth hook handle the login, onAuthStateChange will update session
-    await login.mutateAsync({ email, password });
+    try {
+      const result = await login.mutateAsync({ email, password });
+      // The onAuthStateChange will handle session updates
+      return result;
+    } catch (error) {
+      // Clear any stale session data on login failure
+      localStorage.removeItem('sb-cbqwhkjttgkckhrdwhnx-auth-token');
+      setSession(null);
+      throw error;
+    }
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
-    // Let the auth hook handle the registration, onAuthStateChange will update session
-    await register.mutateAsync({ email, password, fullName });
+    try {
+      const result = await register.mutateAsync({ email, password, fullName });
+      // The onAuthStateChange will handle session updates
+      return result;
+    } catch (error) {
+      // Clear any stale session data on signup failure
+      localStorage.removeItem('sb-cbqwhkjttgkckhrdwhnx-auth-token');
+      setSession(null);
+      throw error;
+    }
   };
 
   const signOut = async () => {
-    // Let the auth hook handle the logout, onAuthStateChange will clear session
-    await logout.mutateAsync();
+    try {
+      await logout.mutateAsync();
+      // The onAuthStateChange will handle session clearing
+    } catch (error) {
+      // Even if logout fails, clear local session
+      localStorage.removeItem('sb-cbqwhkjttgkckhrdwhnx-auth-token');
+      setSession(null);
+      setIsAdmin(false);
+    }
   };
 
   const updateProfile = async (data: { full_name?: string; avatar_url?: string }) => {
@@ -98,7 +137,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const disconnect = async () => {
     await signOut();
-    // Don't clear all localStorage, just let signOut handle the auth token
     window.location.reload();
   };
 
