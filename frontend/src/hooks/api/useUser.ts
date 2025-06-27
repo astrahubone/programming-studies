@@ -20,6 +20,9 @@ export function useUser() {
       return failureCount < 2;
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
+    // Enable the query if we have a token OR if we're trying to validate an existing session
     enabled: !!localStorage.getItem('sb-cbqwhkjttgkckhrdwhnx-auth-token'),
+    // Don't refetch on window focus to avoid unnecessary requests
+    refetchOnWindowFocus: false,
   });
 }

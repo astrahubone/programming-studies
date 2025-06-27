@@ -32,6 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [hasActiveSubscription, setHasActiveSubscription] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [initialized, setInitialized] = useState(false);
 
   const { login, register, logout } = useAuthHook();
   const { data: user, isLoading: userLoading, error: userError, refetch: refetchUser } = useUser();
@@ -49,20 +50,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Initialize session from localStorage on app start
   useEffect(() => {
-    // Get initial session
-    const getInitialSession = async () => {
+    const initializeAuth = async () => {
+      console.log('AuthContext: Initializing auth...');
+      
       try {
+        // First check localStorage for existing token
         const storedToken = localStorage.getItem('sb-cbqwhkjttgkckhrdwhnx-auth-token');
-        console.log('AuthContext: Checking stored token:', !!storedToken);
+        console.log('AuthContext: Stored token found:', !!storedToken);
         
         if (storedToken) {
           try {
             const parsedToken = JSON.parse(storedToken);
-            console.log('AuthContext: Parsed token:', !!parsedToken?.access_token);
+            console.log('AuthContext: Parsed token valid:', !!parsedToken?.access_token);
+            
             if (parsedToken?.access_token) {
+              // Set session immediately from stored token
               setSession(parsedToken);
               console.log('AuthContext: Session set from stored token');
+              
+              // Try to fetch user data to validate the token
+              try {
+                console.log('AuthContext: Validating token by fetching user...');
+                await refetchUser();
+                console.log('AuthContext: Token validation successful');
+              } catch (error) {
+                console.error('AuthContext: Token validation failed:', error);
+                // If token is invalid, clear it
+                localStorage.removeItem('sb-cbqwhkjttgkckhrdwhnx-auth-token');
+                setSession(null);
+              }
             }
           } catch (parseError) {
             console.error('AuthContext: Error parsing stored token:', parseError);
@@ -70,33 +88,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
-        const { data: { session }, error } = await supabase.auth.getSession();
+        // Also check Supabase session
+        const { data: { session: supabaseSession }, error } = await supabase.auth.getSession();
         if (error) {
-          console.error('AuthContext: Error getting session:', error);
-          localStorage.removeItem('sb-cbqwhkjttgkckhrdwhnx-auth-token');
-        } else if (session) {
-          console.log('AuthContext: Got session from Supabase:', !!session);
-          localStorage.setItem('sb-cbqwhkjttgkckhrdwhnx-auth-token', JSON.stringify(session));
-          setSession(session);
+          console.error('AuthContext: Error getting Supabase session:', error);
+        } else if (supabaseSession && !session) {
+          console.log('AuthContext: Got session from Supabase:', !!supabaseSession);
+          localStorage.setItem('sb-cbqwhkjttgkckhrdwhnx-auth-token', JSON.stringify(supabaseSession));
+          setSession(supabaseSession);
         }
       } catch (error) {
-        console.error('AuthContext: Error in getInitialSession:', error);
-        localStorage.removeItem('sb-cbqwhkjttgkckhrdwhnx-auth-token');
+        console.error('AuthContext: Error in initializeAuth:', error);
       } finally {
+        setInitialized(true);
         setLoading(false);
+        console.log('AuthContext: Auth initialization completed');
       }
     };
 
-    getInitialSession();
+    initializeAuth();
+  }, [refetchUser]);
 
-    // Set up Supabase auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('AuthContext: Auth state changed:', event, !!session);
+  // Set up Supabase auth state listener after initialization
+  useEffect(() => {
+    if (!initialized) return;
+
+    console.log('AuthContext: Setting up auth state listener...');
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, supabaseSession) => {
+      console.log('AuthContext: Auth state changed:', event, !!supabaseSession);
       
-      if (session) {
+      if (supabaseSession) {
         // Store session in localStorage when we have a valid session
-        localStorage.setItem('sb-cbqwhkjttgkckhrdwhnx-auth-token', JSON.stringify(session));
-        setSession(session);
+        localStorage.setItem('sb-cbqwhkjttgkckhrdwhnx-auth-token', JSON.stringify(supabaseSession));
+        setSession(supabaseSession);
         console.log('AuthContext: Session updated from auth state change');
         
         // Refetch user data when session changes
@@ -113,14 +138,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsAdmin(false);
         console.log('AuthContext: Session cleared');
       }
-      
-      setLoading(false);
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [refetchUser]);
+  }, [initialized, refetchUser]);
 
   useEffect(() => {
     if (userError?.response?.status === 401) {
@@ -243,7 +266,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     window.location.reload();
   };
 
-  const contextLoading = loading || userLoading;
+  // Only show loading if we haven't initialized yet or if we're actively loading user data
+  const contextLoading = !initialized || (session && userLoading);
 
   console.log('AuthContext: Current state:', {
     session: !!session,
@@ -252,7 +276,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isAdmin,
     userLoading,
     authLoading: loading,
-    hasValidToken: hasValidToken()
+    hasValidToken: hasValidToken(),
+    initialized
   });
 
   return (
