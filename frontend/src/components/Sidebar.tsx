@@ -21,8 +21,8 @@ export default function Sidebar() {
     <Flex direction="column" height="100vh" style={{ borderRight: '1px solid var(--gray-6)' }}>
       <Box p="4">
         <Flex align="center" gap="2">
-          <img src='src\assets\logoblack.png' style={{ height: '32px', width: '32px' }} />
-          <Text size="4" weight="bold">MedStudy</Text>
+          <img src="/src/assets/astrahublogo.webp" style={{ height: '32px', width: '32px' }} />
+          <Text size="4" weight="bold">Astra Hub</Text>
         </Flex>
       </Box>
       

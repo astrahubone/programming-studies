@@ -41,7 +41,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <Box style={{ width: '256px', flexShrink: 0, borderRight: '1px solid var(--gray-6)' }}>
         <Box p="4">
           <Flex align="center" gap="2">
-            <BookOpen size={24} />
+            <img src="/src/assets/astrahublogo.webp" style={{ height: '24px', width: '24px' }} />
             <Text size="4" weight="bold">Admin Panel</Text>
           </Flex>
         </Box>
@@ -55,7 +55,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             size="2"
             style={{ width: '100%', justifyContent: 'flex-start', marginBottom: '8px' }}
           >
-            <Link to="/dashboard">
+            <Link to="/inicio">
               <ArrowLeft size={16} />
               Student View
             </Link>
