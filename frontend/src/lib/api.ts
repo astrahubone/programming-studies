@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { toast } from 'react-toastify';
+import { supabase } from './supabase';
 
 const api = axios.create({
   baseURL: 'https://programming-studies-server.onrender.com/api',
@@ -9,18 +10,29 @@ const api = axios.create({
 });
 
 // Add request interceptor to add auth token
-api.interceptors.request.use((config) => {
+api.interceptors.request.use(async (config) => {
   try {
-    const token = localStorage.getItem('sb-cbqwhkjttgkckhrdwhnx-auth-token');
-    if (token) {
-      const parsedToken = JSON.parse(token);
-      if (parsedToken?.access_token) {
-        config.headers.Authorization = `Bearer ${parsedToken.access_token}`;
-      }
+    // Get the current session from Supabase
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (session?.access_token) {
+      config.headers.Authorization = `Bearer ${session.access_token}`;
     }
   } catch (error) {
-    console.error('Error parsing auth token:', error);
-    localStorage.removeItem('sb-cbqwhkjttgkckhrdwhnx-auth-token');
+    console.error('Error getting auth token:', error);
+    // Try fallback to localStorage
+    try {
+      const token = localStorage.getItem('sb-cbqwhkjttgkckhrdwhnx-auth-token');
+      if (token) {
+        const parsedToken = JSON.parse(token);
+        if (parsedToken?.access_token) {
+          config.headers.Authorization = `Bearer ${parsedToken.access_token}`;
+        }
+      }
+    } catch (fallbackError) {
+      console.error('Error parsing auth token from localStorage:', fallbackError);
+      localStorage.removeItem('sb-cbqwhkjttgkckhrdwhnx-auth-token');
+    }
   }
   return config;
 }, (error) => {
@@ -30,12 +42,13 @@ api.interceptors.request.use((config) => {
 // Add response interceptor to handle errors
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     if (error.response?.status === 401) {
       // Clear token and redirect to login only if we're not already on the login or register page
       const currentPath = window.location.pathname;
       if (!['/login', '/register', '/admin/login'].includes(currentPath)) {
         localStorage.removeItem('sb-cbqwhkjttgkckhrdwhnx-auth-token');
+        await supabase.auth.signOut();
         window.location.href = '/login';
         toast.error('Session expired. Please login again.');
       }

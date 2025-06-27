@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Box, Flex, Text, TextField, Button, Card, Callout } from '@radix-ui/themes';
 import { useAuth } from '../contexts/AuthContext';
+import { toast } from 'react-toastify';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -19,13 +20,55 @@ export default function Login() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    
+    if (!email || !password) {
+      setError('Por favor, preencha todos os campos');
+      return;
+    }
+
     try {
       setError('');
       setLoading(true);
+      
       await signIn(email, password);
-    } catch (error) {
+      
+      toast.success('Login realizado com sucesso!', {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: "light",
+      });
+      
+      // Navigation will be handled by the auth context
+    } catch (error: any) {
       console.error('Erro no login:', error);
-      setError('Erro ao fazer login');
+      
+      let errorMessage = 'Erro ao fazer login';
+      
+      if (error.message === 'Invalid login credentials') {
+        errorMessage = 'Email ou senha incorretos';
+      } else if (error.message === 'Email not confirmed') {
+        errorMessage = 'Por favor, confirme seu email antes de fazer login';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      setError(errorMessage);
+      
+      toast.error(errorMessage, {
+        position: "top-right",
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: "dark",
+      });
     } finally {
       setLoading(false);
     }
@@ -64,6 +107,7 @@ export default function Login() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   size="3"
+                  placeholder="seu@email.com"
                 />
               </Box>
 
@@ -77,6 +121,7 @@ export default function Login() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   size="3"
+                  placeholder="Sua senha"
                 />
               </Box>
 
@@ -102,7 +147,7 @@ export default function Login() {
               size="3"
               style={{ width: '100%' }}
             >
-              Disconectar
+              Limpar dados e reconectar
             </Button>
           </Box>
         </Card>
