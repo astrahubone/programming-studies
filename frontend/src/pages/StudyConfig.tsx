@@ -10,6 +10,7 @@ import { useStudySessions } from "../hooks/api/useStudySessions";
 import { useTechnologies } from "../hooks/api/useTechnologies";
 import { getTechnologyIcon } from "../utils/technologyIcons";
 import { Box, Flex, Text, Button, Card, TextField, Checkbox, Select } from '@radix-ui/themes';
+import React from "react";
 
 interface SubSubject {
   id: string;
