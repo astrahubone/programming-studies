@@ -15,7 +15,7 @@ export default function AdminLogin() {
     if (session && isAdmin) {
       navigate("/admin");
     } else if (session && !isAdmin) {
-      navigate("/inicio");
+      navigate("/dashboard");
       toast.error("Acesso restrito. Você não tem permissões de administrador.", {
         position: "top-right",
         autoClose: 5000,
@@ -60,7 +60,7 @@ export default function AdminLogin() {
       <Flex direction="column" justify="center" align="center" style={{ minHeight: '100vh' }} p="6">
         <Box mb="6">
           <Flex direction="column" align="center" gap="4">
-            <img src="/src/assets/astrahublogo.webp" style={{ height: '128px', width: '128px' }} />
+            <img src='src\assets\logoblack.png' style={{ height: '128px', width: '128px' }} />
             <Text size="6" weight="bold">Admin Login</Text>
           </Flex>
         </Box>
