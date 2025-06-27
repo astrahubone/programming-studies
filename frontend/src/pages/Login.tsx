@@ -41,8 +41,8 @@ export default function Login() {
       <Flex direction="column" justify="center" align="center" style={{ minHeight: '100vh' }} p="6">
         <Box mb="6">
           <Flex direction="column" align="center" gap="4">
-            <img src='src\assets\logoblack.png' style={{ height: '128px', width: '128px' }} />
-            <Text size="6" weight="bold">Revizium</Text>
+            <img src="/src/assets/astrahublogo.webp" style={{ height: '128px', width: '128px' }} />
+            <Text size="6" weight="bold">Astra Hub</Text>
           </Flex>
         </Box>
 

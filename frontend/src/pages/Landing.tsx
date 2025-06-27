@@ -44,9 +44,9 @@ export default function Landing() {
         <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
             <div className="flex items-center">
-            <img src='src\assets\RBlack.png' className="h-12 w-12 text-indigo-600 dark:text-indigo-400" />
+              <img src="/src/assets/astrahublogo.webp" className="h-12 w-12 text-indigo-600 dark:text-indigo-400" />
               <span className="ml-2 text-xl font-bold text-gray-900 dark:text-white">
-                Revizium
+                Astra Hub
               </span>
             </div>
             <div className="flex items-center space-x-4">
@@ -204,13 +204,13 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center">
             <div className="flex items-center">
-            <img src='src\assets\RBlack.png' className="h-12 w-12 text-indigo-600 dark:text-indigo-400" />
+              <img src="/src/assets/astrahublogo.webp" className="h-12 w-12 text-indigo-600 dark:text-indigo-400" />
               <span className="ml-2 text-xl font-bold text-gray-900 dark:text-white">
-                Revizium
+                Astra Hub
               </span>
             </div>
             <p className="text-gray-500 dark:text-gray-400">
-              © 2025 Revizium. Todos os direitos reservados.
+              © 2025 Astra Hub. Todos os direitos reservados.
             </p>
           </div>
         </div>
