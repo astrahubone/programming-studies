@@ -25,7 +25,7 @@ export default function Login() {
       await signIn(email, password);
     } catch (error) {
       console.error('Erro no login:', error);
-      setError('Erro ao fazer login');
+      // Removed generic error message - API interceptors handle detailed error feedback
     } finally {
       setLoading(false);
     }
