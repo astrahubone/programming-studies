@@ -300,7 +300,7 @@ export default function StudyConfig() {
       <Box p="6">
         <Box mb="6">
           <Text size="6" weight="bold" mb="1" style={{ display: 'block' }}>
-            Configuração do estudo
+            Configuração do estudos
           </Text>
           <Text size="3" color="gray">
             Configure suas preferências para gerar um cronograma personalizado
