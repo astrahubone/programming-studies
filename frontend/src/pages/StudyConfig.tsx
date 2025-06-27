@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
-import { Calendar, Code, Database, Cloud, Shield, Globe, Palette, CheckCircle } from "lucide-react";
+import { Calendar, Code, Database, Cloud, Shield, Globe, Palette, CheckCircle, Trash2 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { format, addDays, startOfWeek, addWeeks } from "date-fns";
 import { toast } from "react-toastify";
 import { useSubjects } from "../hooks/api/useSubjects";
 import { useStudySessions } from "../hooks/api/useStudySessions";
-import { Box, Flex, Text, Button, Card, TextField, Checkbox } from '@radix-ui/themes';
+import { Box, Flex, Text, Button, Card, TextField, Checkbox, Select } from '@radix-ui/themes';
 
 interface SubSubject {
   id: string;
@@ -22,7 +22,7 @@ interface StudyDay {
   name: string;
   label: string;
   selected: boolean;
-  hours: number;
+  hours: string; // Changed to string to handle "01:00" format
   dayIndex: number; // 0 = Monday, 6 = Sunday
   hasError: boolean;
 }
@@ -33,6 +33,26 @@ interface Technology {
   icon: React.ComponentType<{ size?: number }>;
   selected: boolean;
 }
+
+// Generate time options in 30-minute intervals
+const generateTimeOptions = () => {
+  const options = [];
+  for (let hours = 1; hours <= 12; hours++) {
+    options.push({
+      value: `${hours.toString().padStart(2, '0')}:00`,
+      label: `${hours.toString().padStart(2, '0')}:00`
+    });
+    if (hours < 12) {
+      options.push({
+        value: `${hours.toString().padStart(2, '0')}:30`,
+        label: `${hours.toString().padStart(2, '0')}:30`
+      });
+    }
+  }
+  return options;
+};
+
+const timeOptions = generateTimeOptions();
 
 export default function StudyConfig() {
   const { user } = useAuth();
@@ -45,13 +65,13 @@ export default function StudyConfig() {
 
   // Study days configuration (Monday = 0, Sunday = 6)
   const [studyDays, setStudyDays] = useState<StudyDay[]>([
-    { name: 'monday', label: 'Segunda', selected: false, hours: 1, dayIndex: 0, hasError: false },
-    { name: 'tuesday', label: 'Terça', selected: false, hours: 1, dayIndex: 1, hasError: false },
-    { name: 'wednesday', label: 'Quarta', selected: false, hours: 1, dayIndex: 2, hasError: false },
-    { name: 'thursday', label: 'Quinta', selected: false, hours: 1, dayIndex: 3, hasError: false },
-    { name: 'friday', label: 'Sexta', selected: false, hours: 1, dayIndex: 4, hasError: false },
-    { name: 'saturday', label: 'Sábado', selected: false, hours: 1, dayIndex: 5, hasError: false },
-    { name: 'sunday', label: 'Domingo', selected: false, hours: 1, dayIndex: 6, hasError: false },
+    { name: 'monday', label: 'Segunda', selected: false, hours: '01:00', dayIndex: 0, hasError: false },
+    { name: 'tuesday', label: 'Terça', selected: false, hours: '01:00', dayIndex: 1, hasError: false },
+    { name: 'wednesday', label: 'Quarta', selected: false, hours: '01:00', dayIndex: 2, hasError: false },
+    { name: 'thursday', label: 'Quinta', selected: false, hours: '01:00', dayIndex: 3, hasError: false },
+    { name: 'friday', label: 'Sexta', selected: false, hours: '01:00', dayIndex: 4, hasError: false },
+    { name: 'saturday', label: 'Sábado', selected: false, hours: '01:00', dayIndex: 5, hasError: false },
+    { name: 'sunday', label: 'Domingo', selected: false, hours: '01:00', dayIndex: 6, hasError: false },
   ]);
 
   // Technologies configuration - all selected by default
@@ -85,15 +105,18 @@ export default function StudyConfig() {
   };
 
   const handleHoursChange = (dayName: string, value: string) => {
-    const hours = parseInt(value) || 0;
-    const hasError = hours < 1;
-    
     setStudyDays(prev => prev.map(day => 
       day.name === dayName ? { 
         ...day, 
-        hours: Math.max(0, Math.min(12, hours)), 
-        hasError 
+        hours: value,
+        hasError: false
       } : day
+    ));
+  };
+
+  const handleRemoveDay = (dayName: string) => {
+    setStudyDays(prev => prev.map(day => 
+      day.name === dayName ? { ...day, selected: false } : day
     ));
   };
 
@@ -103,10 +126,16 @@ export default function StudyConfig() {
     ));
   };
 
+  // Convert time string to decimal hours for calculations
+  const timeToDecimal = (timeStr: string) => {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return hours + (minutes / 60);
+  };
+
   // Fixed validation logic - only check days and technologies
   const selectedDays = studyDays.filter(day => day.selected);
   const selectedTechs = technologies.filter(tech => tech.selected);
-  const hasValidHours = selectedDays.length === 0 || selectedDays.every(day => day.hours >= 1 && !day.hasError);
+  const hasValidHours = selectedDays.length === 0 || selectedDays.every(day => timeToDecimal(day.hours) >= 1 && !day.hasError);
 
   // Button is enabled when: at least one day selected AND at least one technology selected AND valid hours
   const isFormValid = selectedDays.length > 0 && 
@@ -164,7 +193,7 @@ export default function StudyConfig() {
       const availableSubjects = subSubjects.length > 0 ? subSubjects : [];
 
       // Calculate total hours per week
-      const totalWeeklyHours = selectedDays.reduce((sum, day) => sum + day.hours, 0);
+      const totalWeeklyHours = selectedDays.reduce((sum, day) => sum + timeToDecimal(day.hours), 0);
       
       // Create a schedule starting from the selected start date for 4 weeks
       for (let week = 0; week < 4; week++) {
@@ -172,11 +201,12 @@ export default function StudyConfig() {
         
         selectedDays.forEach(day => {
           const dayDate = addDays(weekStart, day.dayIndex);
+          const dayHours = timeToDecimal(day.hours);
           
           // For each hour on this day, assign a technology/subject
-          for (let hour = 0; hour < day.hours; hour++) {
+          for (let hour = 0; hour < Math.floor(dayHours); hour++) {
             // Cycle through selected technologies
-            const techIndex = (week * totalWeeklyHours + selectedDays.indexOf(day) * day.hours + hour) % selectedTechs.length;
+            const techIndex = (week * totalWeeklyHours + selectedDays.indexOf(day) * dayHours + hour) % selectedTechs.length;
             const selectedTech = selectedTechs[techIndex];
             
             // Find a subject that matches this technology (or use first available)
@@ -251,7 +281,7 @@ export default function StudyConfig() {
     );
   }
 
-  const totalHours = selectedDays.reduce((sum, day) => sum + day.hours, 0);
+  const totalHours = selectedDays.reduce((sum, day) => sum + timeToDecimal(day.hours), 0);
 
   return (
     <Layout>
@@ -294,7 +324,7 @@ export default function StudyConfig() {
                   📅 Dias disponíveis para estudar
                 </Text>
                 <Text size="2" color="gray" mb="4" style={{ display: 'block' }}>
-                  Selecione os dias da semana em que você pode estudar
+                  Clique nos dias da semana para selecioná-los
                 </Text>
                 
                 <Flex direction="column" gap="4">
@@ -302,21 +332,33 @@ export default function StudyConfig() {
                     {studyDays.map((day) => (
                       <Card 
                         key={day.name} 
-                        variant={day.selected ? "solid" : "surface"}
+                        variant="surface"
                         style={{ 
                           cursor: 'pointer',
                           minWidth: '120px',
-                          backgroundColor: day.selected ? 'var(--indigo-9)' : 'var(--gray-3)',
-                          color: day.selected ? 'white' : 'var(--gray-12)',
-                          border: day.selected ? '2px solid var(--indigo-11)' : '1px solid var(--gray-6)'
+                          border: day.selected ? '2px solid var(--indigo-9)' : '2px solid var(--gray-6)',
+                          backgroundColor: day.selected ? 'var(--indigo-3)' : 'var(--gray-2)'
                         }}
                         onClick={() => handleDayToggle(day.name, !day.selected)}
                       >
-                        <Flex align="center" justify="center" p="3">
-                          <Text size="2" weight="medium">
+                        <Flex align="center" justify="center" gap="2" p="3">
+                          <Box
+                            style={{
+                              width: '16px',
+                              height: '16px',
+                              border: '2px solid var(--gray-8)',
+                              borderRadius: '3px',
+                              backgroundColor: day.selected ? 'var(--indigo-9)' : 'transparent',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}
+                          >
+                            {day.selected && <CheckCircle size={12} color="white" />}
+                          </Box>
+                          <Text size="2" weight="medium" style={{ color: day.selected ? 'var(--indigo-11)' : 'var(--gray-11)' }}>
                             {day.label}
                           </Text>
-                          {day.selected && <CheckCircle size={16} style={{ marginLeft: '8px' }} />}
                         </Flex>
                       </Card>
                     ))}
@@ -334,27 +376,29 @@ export default function StudyConfig() {
                               <Text size="2" style={{ minWidth: '80px' }}>
                                 {day.label}:
                               </Text>
-                              <TextField.Root
-                                type="number"
-                                min="1"
-                                max="12"
-                                value={day.hours.toString()}
-                                onChange={(e) => handleHoursChange(day.name, e.target.value)}
-                                style={{ 
-                                  width: '80px',
-                                  borderColor: day.hasError ? 'var(--red-8)' : undefined
-                                }}
-                                color={day.hasError ? "red" : undefined}
-                              />
-                              <Text size="2" color="gray">
-                                hora(s)
-                              </Text>
+                              <Select.Root
+                                value={day.hours}
+                                onValueChange={(value) => handleHoursChange(day.name, value)}
+                              >
+                                <Select.Trigger style={{ width: '120px' }} />
+                                <Select.Content>
+                                  {timeOptions.map((option) => (
+                                    <Select.Item key={option.value} value={option.value}>
+                                      {option.label}
+                                    </Select.Item>
+                                  ))}
+                                </Select.Content>
+                              </Select.Root>
+                              <Button
+                                variant="ghost"
+                                color="red"
+                                size="1"
+                                onClick={() => handleRemoveDay(day.name)}
+                                style={{ cursor: 'pointer' }}
+                              >
+                                <Trash2 size={16} />
+                              </Button>
                             </Flex>
-                            {day.hasError && (
-                              <Text size="1" color="red" mt="1" style={{ marginLeft: '83px' }}>
-                                O valor mínimo deve ser 1 hora.
-                              </Text>
-                            )}
                           </Box>
                         ))}
                         <Text size="2" color="gray" mt="2" style={{ 
@@ -363,7 +407,7 @@ export default function StudyConfig() {
                           borderRadius: '6px',
                           color: 'var(--blue-11)'
                         }}>
-                          📊 Total semanal: {totalHours} hora(s)
+                          📊 Total semanal: {totalHours.toFixed(1)} hora(s)
                         </Text>
                       </Flex>
                     </Box>
