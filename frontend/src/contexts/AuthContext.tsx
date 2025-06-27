@@ -36,6 +36,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { login, register, logout } = useAuthHook();
   const { data: user, isLoading: userLoading, error: userError, refetch: refetchUser } = useUser();
 
+  // Function to check if we have a valid token
+  const hasValidToken = () => {
+    try {
+      const token = localStorage.getItem('sb-cbqwhkjttgkckhrdwhnx-auth-token');
+      if (!token) return false;
+      
+      const parsedToken = JSON.parse(token);
+      return !!(parsedToken?.access_token);
+    } catch {
+      return false;
+    }
+  };
+
   useEffect(() => {
     // Get initial session
     const getInitialSession = async () => {
@@ -47,7 +60,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           try {
             const parsedToken = JSON.parse(storedToken);
             console.log('AuthContext: Parsed token:', !!parsedToken?.access_token);
-            setSession(parsedToken);
+            if (parsedToken?.access_token) {
+              setSession(parsedToken);
+              console.log('AuthContext: Session set from stored token');
+            }
           } catch (parseError) {
             console.error('AuthContext: Error parsing stored token:', parseError);
             localStorage.removeItem('sb-cbqwhkjttgkckhrdwhnx-auth-token');
@@ -81,6 +97,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Store session in localStorage when we have a valid session
         localStorage.setItem('sb-cbqwhkjttgkckhrdwhnx-auth-token', JSON.stringify(session));
         setSession(session);
+        console.log('AuthContext: Session updated from auth state change');
         
         // Refetch user data when session changes
         try {
@@ -94,6 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.removeItem('sb-cbqwhkjttgkckhrdwhnx-auth-token');
         setSession(null);
         setIsAdmin(false);
+        console.log('AuthContext: Session cleared');
       }
       
       setLoading(false);
@@ -131,6 +149,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const result = await login.mutateAsync({ email, password });
       console.log('AuthContext: Login mutation completed');
       
+      // The login mutation should have stored the token, now set the session
+      const storedToken = localStorage.getItem('sb-cbqwhkjttgkckhrdwhnx-auth-token');
+      if (storedToken) {
+        try {
+          const parsedToken = JSON.parse(storedToken);
+          if (parsedToken?.access_token) {
+            setSession(parsedToken);
+            console.log('AuthContext: Session set after login');
+          }
+        } catch (error) {
+          console.error('AuthContext: Error parsing token after login:', error);
+        }
+      }
+      
       // Wait for the auth state to update and user data to be fetched
       let attempts = 0;
       const maxAttempts = 10;
@@ -139,8 +171,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await new Promise(resolve => setTimeout(resolve, 200));
         
         // Check if we have both session and user data
-        const currentToken = localStorage.getItem('sb-cbqwhkjttgkckhrdwhnx-auth-token');
-        if (currentToken) {
+        if (hasValidToken()) {
           console.log('AuthContext: Token found, refetching user...');
           try {
             const userResult = await refetchUser();
@@ -220,7 +251,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loading: contextLoading,
     isAdmin,
     userLoading,
-    authLoading: loading
+    authLoading: loading,
+    hasValidToken: hasValidToken()
   });
 
   return (
