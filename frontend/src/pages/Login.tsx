@@ -9,30 +9,35 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { signIn, disconnect, session, isAdmin, user } = useAuth();
+  const { signIn, disconnect, session, isAdmin, user, loading: authLoading } = useAuth();
 
   // Handle navigation when session/user changes
   useEffect(() => {
-    if (session && user) {
-      console.log('Login: Session and user available, redirecting...', { session, user, isAdmin });
-      
-      // Small delay to ensure everything is loaded
-      const timer = setTimeout(() => {
-        if (isAdmin) {
-          navigate('/admin', { replace: true });
-        } else {
-          navigate('/inicio', { replace: true });
-        }
-      }, 100);
+    console.log('Login: Auth state changed:', { 
+      session: !!session, 
+      user: !!user, 
+      isAdmin, 
+      authLoading 
+    });
 
-      return () => clearTimeout(timer);
+    // Only redirect if we have both session and user data, and we're not loading
+    if (session && user && !authLoading) {
+      console.log('Login: All conditions met for redirect, navigating...');
+      
+      const targetPath = isAdmin ? '/admin' : '/inicio';
+      console.log('Login: Redirecting to:', targetPath);
+      
+      // Use a small delay to ensure everything is properly set
+      setTimeout(() => {
+        navigate(targetPath, { replace: true });
+      }, 100);
     }
-  }, [session, user, isAdmin, navigate]);
+  }, [session, user, isAdmin, authLoading, navigate]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     
-    if (loading) return;
+    if (loading || authLoading) return;
     
     try {
       setError('');
@@ -51,8 +56,8 @@ export default function Login() {
     }
   }
 
-  // Don't render the form if we have a session (prevents flash)
-  if (session) {
+  // Show loading state if we have a session but are still loading user data
+  if ((session && !user && authLoading) || (session && user && !authLoading)) {
     return (
       <Box style={{ minHeight: '100vh', backgroundColor: 'var(--gray-2)' }}>
         <Flex direction="column" justify="center" align="center" style={{ minHeight: '100vh' }} p="6">
@@ -92,7 +97,7 @@ export default function Login() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   size="3"
-                  disabled={loading}
+                  disabled={loading || authLoading}
                 />
               </Box>
 
@@ -106,11 +111,11 @@ export default function Login() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   size="3"
-                  disabled={loading}
+                  disabled={loading || authLoading}
                 />
               </Box>
 
-              <Button type="submit" disabled={loading} size="3">
+              <Button type="submit" disabled={loading || authLoading} size="3">
                 {loading ? 'Fazendo login...' : 'Entrar'}
               </Button>
             </Flex>
@@ -131,7 +136,7 @@ export default function Login() {
               onClick={disconnect}
               size="3"
               style={{ width: '100%' }}
-              disabled={loading}
+              disabled={loading || authLoading}
             >
               Disconectar
             </Button>

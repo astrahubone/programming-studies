@@ -40,16 +40,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Get initial session
     const getInitialSession = async () => {
       try {
+        const storedToken = localStorage.getItem('sb-cbqwhkjttgkckhrdwhnx-auth-token');
+        console.log('AuthContext: Checking stored token:', !!storedToken);
+        
+        if (storedToken) {
+          try {
+            const parsedToken = JSON.parse(storedToken);
+            console.log('AuthContext: Parsed token:', !!parsedToken?.access_token);
+            setSession(parsedToken);
+          } catch (parseError) {
+            console.error('AuthContext: Error parsing stored token:', parseError);
+            localStorage.removeItem('sb-cbqwhkjttgkckhrdwhnx-auth-token');
+          }
+        }
+
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error) {
-          console.error('Error getting session:', error);
+          console.error('AuthContext: Error getting session:', error);
           localStorage.removeItem('sb-cbqwhkjttgkckhrdwhnx-auth-token');
         } else if (session) {
+          console.log('AuthContext: Got session from Supabase:', !!session);
           localStorage.setItem('sb-cbqwhkjttgkckhrdwhnx-auth-token', JSON.stringify(session));
           setSession(session);
         }
       } catch (error) {
-        console.error('Error in getInitialSession:', error);
+        console.error('AuthContext: Error in getInitialSession:', error);
         localStorage.removeItem('sb-cbqwhkjttgkckhrdwhnx-auth-token');
       } finally {
         setLoading(false);
@@ -60,7 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Set up Supabase auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event, session);
+      console.log('AuthContext: Auth state changed:', event, !!session);
       
       if (session) {
         // Store session in localStorage when we have a valid session
@@ -69,9 +84,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         // Refetch user data when session changes
         try {
+          console.log('AuthContext: Refetching user data...');
           await refetchUser();
         } catch (error) {
-          console.error('Error refetching user data:', error);
+          console.error('AuthContext: Error refetching user data:', error);
         }
       } else {
         // Clear localStorage when session is null
@@ -90,6 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (userError?.response?.status === 401) {
+      console.log('AuthContext: User fetch failed with 401, clearing session');
       // Clear session if user data fetch fails with 401
       setSession(null);
       localStorage.removeItem('sb-cbqwhkjttgkckhrdwhnx-auth-token');
@@ -98,25 +115,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (user) {
+      console.log('AuthContext: User data loaded:', { id: user.id, role: user.role, isActive: user.is_active });
       setIsAdmin(user.role === 'admin' && user.is_active === true);
+    } else {
+      console.log('AuthContext: No user data');
+      setIsAdmin(false);
     }
   }, [user]);
 
   const signIn = async (email: string, password: string) => {
     try {
       setLoading(true);
-      const result = await login.mutateAsync({ email, password });
+      console.log('AuthContext: Starting sign in process...');
       
-      // Wait a bit for the auth state to update
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const result = await login.mutateAsync({ email, password });
+      console.log('AuthContext: Login mutation completed');
+      
+      // Wait for the auth state to update and user data to be fetched
+      let attempts = 0;
+      const maxAttempts = 10;
+      
+      while (attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        // Check if we have both session and user data
+        const currentToken = localStorage.getItem('sb-cbqwhkjttgkckhrdwhnx-auth-token');
+        if (currentToken) {
+          console.log('AuthContext: Token found, refetching user...');
+          try {
+            const userResult = await refetchUser();
+            if (userResult.data) {
+              console.log('AuthContext: User data fetched successfully');
+              break;
+            }
+          } catch (error) {
+            console.error('AuthContext: Error refetching user:', error);
+          }
+        }
+        
+        attempts++;
+        console.log(`AuthContext: Waiting for auth state... attempt ${attempts}/${maxAttempts}`);
+      }
       
       return result;
     } catch (error) {
+      console.error('AuthContext: Sign in error:', error);
       // Clear any stale session data on login failure
       localStorage.removeItem('sb-cbqwhkjttgkckhrdwhnx-auth-token');
       setSession(null);
-      setLoading(false);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -165,13 +214,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const contextLoading = loading || userLoading;
 
-  if (contextLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 dark:border-indigo-400"></div>
-      </div>
-    );
-  }
+  console.log('AuthContext: Current state:', {
+    session: !!session,
+    user: !!user,
+    loading: contextLoading,
+    isAdmin,
+    userLoading,
+    authLoading: loading
+  });
 
   return (
     <AuthContext.Provider
