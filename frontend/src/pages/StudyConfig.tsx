@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
-import { Calendar, Code, Database, Cloud, Shield, Globe, Palette, CheckCircle, Trash2 } from "lucide-react";
+import { Calendar, CheckCircle, Trash2 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { format, addDays, startOfWeek, addWeeks } from "date-fns";
 import { toast } from "react-toastify";
 import { useSubjects } from "../hooks/api/useSubjects";
 import { useStudySessions } from "../hooks/api/useStudySessions";
+import { useTechnologies } from "../hooks/api/useTechnologies";
+import { getTechnologyIcon } from "../utils/technologyIcons";
 import { Box, Flex, Text, Button, Card, TextField, Checkbox, Select } from '@radix-ui/themes';
 
 interface SubSubject {
@@ -30,8 +32,9 @@ interface StudyDay {
 interface Technology {
   id: string;
   name: string;
-  icon: React.ComponentType<{ size?: number }>;
   selected: boolean;
+  total_hours: number;
+  subtopics_count: number;
 }
 
 // Generate time options in 30-minute intervals
@@ -59,6 +62,7 @@ export default function StudyConfig() {
   const navigate = useNavigate();
   const { subjects: { data: subjectsData } } = useSubjects();
   const { createStudySession } = useStudySessions();
+  const { technologies: { data: technologiesData, isLoading: technologiesLoading } } = useTechnologies();
   const [startDate, setStartDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [loading, setLoading] = useState(false);
   const [showPreferences, setShowPreferences] = useState(false);
@@ -74,16 +78,22 @@ export default function StudyConfig() {
     { name: 'sunday', label: 'Domingo', selected: false, hours: '01:00', dayIndex: 6, hasError: false },
   ]);
 
-  // Technologies configuration - all selected by default
-  const [technologies, setTechnologies] = useState<Technology[]>([
-    { id: 'html', name: 'HTML', icon: Globe, selected: true },
-    { id: 'css', name: 'CSS', icon: Palette, selected: true },
-    { id: 'javascript', name: 'JavaScript', icon: Code, selected: true },
-    { id: 'react', name: 'React', icon: Code, selected: true },
-    { id: 'security', name: 'Segurança', icon: Shield, selected: true },
-    { id: 'data', name: 'Dados', icon: Database, selected: true },
-    { id: 'cloud', name: 'Cloud', icon: Cloud, selected: true },
-  ]);
+  // Technologies configuration - all selected by default, populated from API
+  const [technologies, setTechnologies] = useState<Technology[]>([]);
+
+  // Update technologies when data is loaded
+  React.useEffect(() => {
+    if (technologiesData && technologiesData.length > 0) {
+      const mappedTechnologies = technologiesData.map(tech => ({
+        id: tech.id,
+        name: tech.name,
+        selected: true, // All selected by default
+        total_hours: tech.total_hours,
+        subtopics_count: tech.subtopics_count,
+      }));
+      setTechnologies(mappedTechnologies);
+    }
+  }, [technologiesData]);
 
   const subSubjects = subjectsData?.flatMap(subject => 
     subject.sub_subjects.map(sub => ({
@@ -435,33 +445,49 @@ export default function StudyConfig() {
                   Todas as tecnologias estão selecionadas por padrão. Desmarque as que você já domina ou não deseja estudar.
                 </Text>
                 
-                <Flex wrap="wrap" gap="3">
-                  {technologies.map((tech) => {
-                    const IconComponent = tech.icon;
-                    return (
-                      <Card 
-                        key={tech.id}
-                        variant={tech.selected ? "solid" : "surface"}
-                        style={{ 
-                          cursor: 'pointer',
-                          minWidth: '140px',
-                          backgroundColor: tech.selected ? 'var(--green-9)' : 'var(--gray-3)',
-                          color: tech.selected ? 'white' : 'var(--gray-12)',
-                          border: tech.selected ? '2px solid var(--green-11)' : '1px solid var(--gray-6)'
-                        }}
-                        onClick={() => handleTechnologyToggle(tech.id, !tech.selected)}
-                      >
-                        <Flex align="center" justify="center" gap="2" p="3">
-                          <IconComponent size={16} />
-                          <Text size="2" weight="medium">
-                            {tech.name}
-                          </Text>
-                          {tech.selected && <CheckCircle size={14} />}
-                        </Flex>
-                      </Card>
-                    );
-                  })}
-                </Flex>
+                {technologiesLoading ? (
+                  <Flex justify="center" align="center" p="4">
+                    <Text>Carregando tecnologias...</Text>
+                  </Flex>
+                ) : (
+                  <Flex wrap="wrap" gap="3">
+                    {technologies.map((tech) => {
+                      const IconComponent = getTechnologyIcon(tech.name);
+                      return (
+                        <Card 
+                          key={tech.id}
+                          variant={tech.selected ? "solid" : "surface"}
+                          style={{ 
+                            cursor: 'pointer',
+                            minWidth: '160px',
+                            backgroundColor: tech.selected ? 'var(--green-9)' : 'var(--gray-3)',
+                            color: tech.selected ? 'white' : 'var(--gray-12)',
+                            border: tech.selected ? '2px solid var(--green-11)' : '1px solid var(--gray-6)'
+                          }}
+                          onClick={() => handleTechnologyToggle(tech.id, !tech.selected)}
+                        >
+                          <Flex direction="column" gap="2" p="3">
+                            <Flex align="center" justify="center" gap="2">
+                              <IconComponent size={16} />
+                              <Text size="2" weight="medium">
+                                {tech.name}
+                              </Text>
+                              {tech.selected && <CheckCircle size={14} />}
+                            </Flex>
+                            <Text size="1" style={{ 
+                              textAlign: 'center',
+                              opacity: 0.8,
+                              color: tech.selected ? 'white' : 'var(--gray-11)'
+                            }}>
+                              {tech.total_hours}h • {tech.subtopics_count} tópicos
+                            </Text>
+                          </Flex>
+                        </Card>
+                      );
+                    })}
+                  </Flex>
+                )}
+                
                 <Text size="2" color="gray" mt="3" style={{ 
                   padding: '8px 12px', 
                   backgroundColor: 'var(--green-3)', 
