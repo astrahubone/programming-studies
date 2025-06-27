@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Box, Flex, Text, TextField, Button, Card, Callout } from '@radix-ui/themes';
 import { useAuth } from '../contexts/AuthContext';
-import { toast } from 'react-toastify';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -10,84 +9,30 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { signIn, disconnect, session, isAdmin } = useAuth();
+  const { signIn, disconnect, session } = useAuth();
 
   useEffect(() => {
     if (session) {
-      console.log('Session detected in Login, redirecting...');
-      // Redirect based on user role
-      if (isAdmin) {
-        navigate('/admin', { replace: true });
-      } else {
-        navigate('/inicio', { replace: true });
-      }
+      navigate('/');
     }
-  }, [session, isAdmin, navigate]);
+  }, [session, navigate]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    
-    if (!email || !password) {
-      setError('Por favor, preencha todos os campos');
-      return;
-    }
-
     try {
       setError('');
       setLoading(true);
-      
-      console.log('Attempting login...');
       await signIn(email, password);
-      
-      toast.success('Login realizado com sucesso!', {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
-        theme: "light",
-      });
-      
-      // Navigation will be handled by the useEffect above
-    } catch (error: any) {
+    } catch (error) {
       console.error('Erro no login:', error);
-      
-      let errorMessage = 'Erro ao fazer login';
-      
-      if (error.message === 'Invalid login credentials') {
-        errorMessage = 'Email ou senha incorretos';
-      } else if (error.message === 'Email not confirmed') {
-        errorMessage = 'Por favor, confirme seu email antes de fazer login';
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
-      setError(errorMessage);
-      
-      toast.error(errorMessage, {
-        position: "top-right",
-        autoClose: 5000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
-        theme: "dark",
-      });
+      setError('Erro ao fazer login');
     } finally {
       setLoading(false);
     }
   }
 
-  // Don't render the login form if user is already authenticated
   if (session) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 dark:border-indigo-400"></div>
-      </div>
-    );
+    return null;
   }
 
   return (
@@ -119,7 +64,6 @@ export default function Login() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   size="3"
-                  placeholder="seu@email.com"
                 />
               </Box>
 
@@ -133,7 +77,6 @@ export default function Login() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   size="3"
-                  placeholder="Sua senha"
                 />
               </Box>
 
@@ -159,7 +102,7 @@ export default function Login() {
               size="3"
               style={{ width: '100%' }}
             >
-              Limpar dados e reconectar
+              Disconectar
             </Button>
           </Box>
         </Card>

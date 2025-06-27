@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Box, Flex, Text, TextField, Button, Card, Callout } from '@radix-ui/themes';
 import { useAuth } from '../contexts/AuthContext';
-import { toast } from 'react-toastify';
 
 export default function Register() {
   const [email, setEmail] = useState('');
@@ -17,64 +16,17 @@ export default function Register() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    if (!email || !password || !fullName || !confirmPassword) {
-      setError('Por favor, preencha todos os campos');
-      return;
-    }
-
     if (password !== confirmPassword) {
-      setError('As senhas não coincidem');
-      return;
-    }
-
-    if (password.length < 6) {
-      setError('A senha deve ter pelo menos 6 caracteres');
-      return;
+      return setError('As senhas não coincidem');
     }
 
     try {
       setError('');
       setLoading(true);
-      
       await signUp(email, password, fullName);
-      
-      toast.success('Conta criada com sucesso!', {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
-        theme: "light",
-      });
-      
       navigate('/');
-    } catch (error: any) {
-      console.error('Erro no registro:', error);
-      
-      let errorMessage = 'Erro ao criar uma conta';
-      
-      if (error.message === 'User already registered') {
-        errorMessage = 'Este email já está cadastrado';
-      } else if (error.message === 'Password should be at least 6 characters') {
-        errorMessage = 'A senha deve ter pelo menos 6 caracteres';
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
-      setError(errorMessage);
-      
-      toast.error(errorMessage, {
-        position: "top-right",
-        autoClose: 5000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
-        theme: "dark",
-      });
+    } catch (error) {
+      setError('Erro ao criar uma conta');
     } finally {
       setLoading(false);
     }
@@ -109,7 +61,6 @@ export default function Register() {
                   onChange={(e) => setFullName(e.target.value)}
                   required
                   size="3"
-                  placeholder="Seu nome completo"
                 />
               </Box>
 
@@ -123,7 +74,6 @@ export default function Register() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   size="3"
-                  placeholder="seu@email.com"
                 />
               </Box>
 
@@ -137,7 +87,6 @@ export default function Register() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   size="3"
-                  placeholder="Mínimo 6 caracteres"
                 />
               </Box>
 
@@ -151,7 +100,6 @@ export default function Register() {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
                   size="3"
-                  placeholder="Digite a senha novamente"
                 />
               </Box>
 

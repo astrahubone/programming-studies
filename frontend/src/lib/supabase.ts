@@ -12,13 +12,11 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: true,
-    storage: window.localStorage,
-    storageKey: 'sb-cbqwhkjttgkckhrdwhnx-auth-token',
+    detectSessionInUrl: true
   },
   global: {
     headers: {
-      'x-application-name': 'astra-hub'
+      'x-application-name': 'medstudy'
     }
   },
   db: {

@@ -21,39 +21,21 @@ const PrivateRoute = ({ children, requireAdmin = false }: {
   children: React.ReactNode;
   requireAdmin?: boolean;
 }) => {
-  const { session, isAdmin, loading } = useAuth();
-
-  // Show loading while auth is being determined
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 dark:border-indigo-400"></div>
-      </div>
-    );
-  }
+  const { session, isAdmin } = useAuth();
 
   if (!session) {
-    return <Navigate to={requireAdmin ? "/admin/login" : "/login"} replace />;
+    return <Navigate to={requireAdmin ? "/admin/login" : "/login"} />;
   }
 
   if (requireAdmin && !isAdmin) {
-    return <Navigate to="/inicio" replace />;
+    return <Navigate to="/dashboard" />;
   }
 
   return <>{children}</>;
 };
 
 function App() {
-  const { session, isAdmin, loading } = useAuth();
-
-  // Show loading while auth is being determined
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 dark:border-indigo-400"></div>
-      </div>
-    );
-  }
+  const { session, isAdmin } = useAuth();
 
   return (
     <ThemeProvider>
