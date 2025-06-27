@@ -21,21 +21,41 @@ const PrivateRoute = ({ children, requireAdmin = false }: {
   children: React.ReactNode;
   requireAdmin?: boolean;
 }) => {
-  const { session, isAdmin } = useAuth();
+  const { session, isAdmin, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <Box style={{ minHeight: '100vh', backgroundColor: 'var(--gray-1)' }}>
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 dark:border-indigo-400"></div>
+        </div>
+      </Box>
+    );
+  }
 
   if (!session) {
-    return <Navigate to={requireAdmin ? "/admin/login" : "/login"} />;
+    return <Navigate to={requireAdmin ? "/admin/login" : "/login"} replace />;
   }
 
   if (requireAdmin && !isAdmin) {
-    return <Navigate to="/dashboard" />;
+    return <Navigate to="/inicio" replace />;
   }
 
   return <>{children}</>;
 };
 
 function App() {
-  const { session, isAdmin } = useAuth();
+  const { session, isAdmin, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <Box style={{ minHeight: '100vh', backgroundColor: 'var(--gray-1)' }}>
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 dark:border-indigo-400"></div>
+        </div>
+      </Box>
+    );
+  }
 
   return (
     <ThemeProvider>

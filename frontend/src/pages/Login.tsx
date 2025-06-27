@@ -9,31 +9,58 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { signIn, disconnect, session } = useAuth();
+  const { signIn, disconnect, session, isAdmin, user } = useAuth();
 
+  // Handle navigation when session/user changes
   useEffect(() => {
-    if (session) {
-      navigate('/');
+    if (session && user) {
+      console.log('Login: Session and user available, redirecting...', { session, user, isAdmin });
+      
+      // Small delay to ensure everything is loaded
+      const timer = setTimeout(() => {
+        if (isAdmin) {
+          navigate('/admin', { replace: true });
+        } else {
+          navigate('/inicio', { replace: true });
+        }
+      }, 100);
+
+      return () => clearTimeout(timer);
     }
-  }, [session, navigate]);
+  }, [session, user, isAdmin, navigate]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    
+    if (loading) return;
+    
     try {
       setError('');
       setLoading(true);
+      
+      console.log('Login: Starting login process...');
       await signIn(email, password);
-      // Navigation will be handled by the useEffect when session updates
-    } catch (error) {
-      console.error('Erro no login:', error);
-      setError('Credenciais inválidas. Verifique seu email e senha.');
+      console.log('Login: Sign in completed successfully');
+      
+      // Navigation will be handled by the useEffect above
+    } catch (error: any) {
+      console.error('Login error:', error);
+      setError(error?.response?.data?.error || error?.message || 'Credenciais inválidas. Verifique seu email e senha.');
     } finally {
       setLoading(false);
     }
   }
 
+  // Don't render the form if we have a session (prevents flash)
   if (session) {
-    return null;
+    return (
+      <Box style={{ minHeight: '100vh', backgroundColor: 'var(--gray-2)' }}>
+        <Flex direction="column" justify="center" align="center" style={{ minHeight: '100vh' }} p="6">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 dark:border-indigo-400"></div>
+          <Text mt="4">Redirecionando...</Text>
+        </Flex>
+      </Box>
+    );
   }
 
   return (
@@ -65,6 +92,7 @@ export default function Login() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   size="3"
+                  disabled={loading}
                 />
               </Box>
 
@@ -78,6 +106,7 @@ export default function Login() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   size="3"
+                  disabled={loading}
                 />
               </Box>
 
@@ -102,6 +131,7 @@ export default function Login() {
               onClick={disconnect}
               size="3"
               style={{ width: '100%' }}
+              disabled={loading}
             >
               Disconectar
             </Button>

@@ -22,6 +22,7 @@ interface AuthContextType {
   disconnect: () => Promise<void>;
   isAdmin: boolean;
   hasActiveSubscription: boolean;
+  loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -33,7 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const { login, register, logout } = useAuthHook();
-  const { data: user, isLoading: userLoading, error: userError } = useUser();
+  const { data: user, isLoading: userLoading, error: userError, refetch: refetchUser } = useUser();
 
   useEffect(() => {
     // Get initial session
@@ -58,25 +59,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     getInitialSession();
 
     // Set up Supabase auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state changed:', event, session);
       
       if (session) {
         // Store session in localStorage when we have a valid session
         localStorage.setItem('sb-cbqwhkjttgkckhrdwhnx-auth-token', JSON.stringify(session));
         setSession(session);
+        
+        // Refetch user data when session changes
+        try {
+          await refetchUser();
+        } catch (error) {
+          console.error('Error refetching user data:', error);
+        }
       } else {
         // Clear localStorage when session is null
         localStorage.removeItem('sb-cbqwhkjttgkckhrdwhnx-auth-token');
         setSession(null);
         setIsAdmin(false);
       }
+      
+      setLoading(false);
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [refetchUser]);
 
   useEffect(() => {
     if (userError?.response?.status === 401) {
@@ -94,32 +104,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     try {
+      setLoading(true);
       const result = await login.mutateAsync({ email, password });
-      // The onAuthStateChange will handle session updates
+      
+      // Wait a bit for the auth state to update
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       return result;
     } catch (error) {
       // Clear any stale session data on login failure
       localStorage.removeItem('sb-cbqwhkjttgkckhrdwhnx-auth-token');
       setSession(null);
+      setLoading(false);
       throw error;
     }
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
     try {
+      setLoading(true);
       const result = await register.mutateAsync({ email, password, fullName });
-      // The onAuthStateChange will handle session updates
+      
+      // Wait a bit for the auth state to update
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       return result;
     } catch (error) {
       // Clear any stale session data on signup failure
       localStorage.removeItem('sb-cbqwhkjttgkckhrdwhnx-auth-token');
       setSession(null);
+      setLoading(false);
       throw error;
     }
   };
 
   const signOut = async () => {
     try {
+      setLoading(true);
       await logout.mutateAsync();
       // The onAuthStateChange will handle session clearing
     } catch (error) {
@@ -127,6 +148,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem('sb-cbqwhkjttgkckhrdwhnx-auth-token');
       setSession(null);
       setIsAdmin(false);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -140,7 +163,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     window.location.reload();
   };
 
-  if (loading || userLoading) {
+  const contextLoading = loading || userLoading;
+
+  if (contextLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 dark:border-indigo-400"></div>
@@ -160,6 +185,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         disconnect,
         isAdmin,
         hasActiveSubscription,
+        loading: contextLoading,
       }}
     >
       {children}

@@ -16,18 +16,23 @@ export function useAuth() {
 
   const login = useMutation({
     mutationFn: async (data: LoginData) => {
+      console.log('useAuth: Making login request...');
       const response = await api.post('/auth/login', data);
+      console.log('useAuth: Login response received:', response.status);
       return response.data;
     },
     onSuccess: (data) => {
+      console.log('useAuth: Login successful, storing session...');
       // Store the token manually since we're using custom API
       if (data.session) {
         localStorage.setItem('sb-cbqwhkjttgkckhrdwhnx-auth-token', JSON.stringify(data.session));
       }
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['user'] });
+      console.log('useAuth: Session stored and queries invalidated');
     },
     onError: (error: any) => {
+      console.error('useAuth: Login error:', error);
       // Clear any stale tokens on login error
       localStorage.removeItem('sb-cbqwhkjttgkckhrdwhnx-auth-token');
       toast.error(error.response?.data?.error || 'Failed to login');
