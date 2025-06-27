@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useAuth as useAuthHook } from '../hooks/api/useAuth';
 import { useUser } from '../hooks/api/useUser';
+import { supabase } from '../lib/supabase';
 
 interface AuthUser {
   id: string;
@@ -35,19 +36,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { data: user, isLoading: userLoading, error: userError } = useUser();
 
   useEffect(() => {
-    // Get initial session from localStorage
-    try {
-      const token = localStorage.getItem('sb-cbqwhkjttgkckhrdwhnx-auth-token');
-      if (token) {
-        const parsedToken = JSON.parse(token);
-        setSession(parsedToken);
+    // Set up Supabase auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state changed:', event, session);
+      
+      if (session) {
+        // Store session in localStorage when we have a valid session
+        localStorage.setItem('sb-cbqwhkjttgkckhrdwhnx-auth-token', JSON.stringify(session));
+        setSession(session);
+      } else {
+        // Clear localStorage when session is null
+        localStorage.removeItem('sb-cbqwhkjttgkckhrdwhnx-auth-token');
+        setSession(null);
+        setIsAdmin(false);
       }
-    } catch (error) {
-      // If token is invalid JSON, remove it
-      localStorage.removeItem('sb-cbqwhkjttgkckhrdwhnx-auth-token');
-    }
-    setLoading(false);
-  }, []);
+      
+      // Set loading to false after initial session is determined
+      if (event === 'INITIAL_SESSION' || loading) {
+        setLoading(false);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [loading]);
 
   useEffect(() => {
     if (userError?.response?.status === 401) {
@@ -64,35 +77,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   const signIn = async (email: string, password: string) => {
-    try {
-      const result = await login.mutateAsync({ email, password });
-      localStorage.setItem('sb-cbqwhkjttgkckhrdwhnx-auth-token', JSON.stringify(result.session));
-      setSession(result.session);
-    } catch (error) {
-      localStorage.removeItem('sb-cbqwhkjttgkckhrdwhnx-auth-token');
-      throw error;
-    }
+    // Let the auth hook handle the login, onAuthStateChange will update session
+    await login.mutateAsync({ email, password });
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
-    try {
-      const result = await register.mutateAsync({ email, password, fullName });
-      localStorage.setItem('sb-cbqwhkjttgkckhrdwhnx-auth-token', JSON.stringify(result.session));
-      setSession(result.session);
-    } catch (error) {
-      localStorage.removeItem('sb-cbqwhkjttgkckhrdwhnx-auth-token');
-      throw error;
-    }
+    // Let the auth hook handle the registration, onAuthStateChange will update session
+    await register.mutateAsync({ email, password, fullName });
   };
 
   const signOut = async () => {
-    try {
-      await logout.mutateAsync();
-    } finally {
-      localStorage.removeItem('sb-cbqwhkjttgkckhrdwhnx-auth-token');
-      setSession(null);
-      setIsAdmin(false);
-    }
+    // Let the auth hook handle the logout, onAuthStateChange will clear session
+    await logout.mutateAsync();
   };
 
   const updateProfile = async (data: { full_name?: string; avatar_url?: string }) => {
@@ -102,7 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const disconnect = async () => {
     await signOut();
-    window.localStorage.clear();
+    // Don't clear all localStorage, just let signOut handle the auth token
     window.location.reload();
   };
 

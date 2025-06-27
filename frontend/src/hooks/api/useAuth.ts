@@ -19,9 +19,8 @@ export function useAuth() {
       const response = await api.post('/auth/login', data);
       return response.data;
     },
-    onSuccess: (data) => {
-      // Store the token
-      localStorage.setItem('sb-cbqwhkjttgkckhrdwhnx-auth-token', JSON.stringify(data.session));
+    onSuccess: () => {
+      // Don't manually store token - let onAuthStateChange handle it
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['user'] });
     },
@@ -35,9 +34,8 @@ export function useAuth() {
       const response = await api.post('/auth/register', data);
       return response.data;
     },
-    onSuccess: (data) => {
-      // Store the token
-      localStorage.setItem('sb-cbqwhkjttgkckhrdwhnx-auth-token', JSON.stringify(data.session));
+    onSuccess: () => {
+      // Don't manually store token - let onAuthStateChange handle it
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['user'] });
     },
@@ -49,7 +47,7 @@ export function useAuth() {
   const logout = useMutation({
     mutationFn: async () => {
       await api.post('/auth/logout');
-      localStorage.removeItem('sb-cbqwhkjttgkckhrdwhnx-auth-token');
+      // Don't manually remove token - let onAuthStateChange handle it
       queryClient.clear();
     },
     onError: (error: any) => {
