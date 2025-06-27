@@ -3,112 +3,125 @@ import FullCalendar from '@fullcalendar/react';
 import ptBrLocale from '@fullcalendar/core/locales/pt-br';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
-import { Box, Flex, Text, Button, Card } from '@radix-ui/themes';
-import { CheckCircle, RotateCcw } from 'lucide-react';
+import { Box, Flex, Text, Button, Card, Dialog } from '@radix-ui/themes';
+import { CheckCircle, RotateCcw, Clock, BookOpen } from 'lucide-react';
 import Layout from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
-import QuizModal from '../components/QuizModal';
 import { toast } from 'react-toastify';
-import { useStudySessions } from '../hooks/api/useStudySessions';
+import { useStudyConfig } from '../hooks/api/useStudyConfig';
+import { format, addDays } from 'date-fns';
 
-interface StudySession {
+interface TechnologyStudySession {
   id: string;
-  sub_subject_id: string;
   scheduled_date: string;
+  scheduled_hours: number;
+  is_completed: boolean;
   completed_at: string | null;
-  questions_total: number | null;
-  questions_correct: number | null;
-  sub_subject: {
-    title: string;
-    difficulty: 'fácil' | 'médio' | 'difícil';
-    subject: {
-      title: string;
-      color?: string;
-    };
+  notes: string | null;
+  technology: {
+    id: string;
+    name: string;
+    icon_name: string;
+  };
+  subtopic: {
+    id: string;
+    name: string;
+    difficulty_level: 'iniciante' | 'intermediario' | 'avancado';
+    hours_required: number;
   };
 }
 
 const DEFAULT_COLORS = {
-  fácil: '#60A5FA',
-  médio: '#F59E0B',
-  difícil: '#EF4444'
+  iniciante: '#60A5FA',
+  intermediario: '#F59E0B',
+  avancado: '#EF4444'
 };
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const { studySessions: { data: sessions, isLoading, error }, resetStudyData } = useStudySessions();
-  const [selectedSession, setSelectedSession] = useState<StudySession | null>(null);
-  const [resetting, setResetting] = useState(false);
+  const { 
+    studySessionsForCalendar: { data: sessions, isLoading, error },
+    completeStudySession,
+    deleteStudySession
+  } = useStudyConfig();
+  
+  const [selectedSession, setSelectedSession] = useState<TechnologyStudySession | null>(null);
+  const [showSessionModal, setShowSessionModal] = useState(false);
+  const [sessionNotes, setSessionNotes] = useState('');
 
-  async function handleReset() {
-    if (!user) {
-      toast.error('Você precisa estar logado para resetar os dados', {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
-        theme: "dark",
-      });
-      return;
-    }
+  // Get calendar date range (current month)
+  const today = new Date();
+  const startDate = format(new Date(today.getFullYear(), today.getMonth(), 1), 'yyyy-MM-dd');
+  const endDate = format(new Date(today.getFullYear(), today.getMonth() + 1, 0), 'yyyy-MM-dd');
 
-    if (!confirm('Tem certeza que deseja resetar todos os dados de estudo? Esta ação não pode ser desfeita.')) {
-      return;
-    }
+  const calendarSessions = useStudyConfig().studySessionsForCalendar({ startDate, endDate });
 
-    setResetting(true);
-    try {
-      await resetStudyData.mutateAsync();
-      
-      toast.success('Dados de estudo resetados com sucesso!', {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        theme: "light",
-      });
-    } catch (error) {
-      console.error('Erro ao resetar dados:', error);
-      toast.error(
-        error instanceof Error 
-          ? `Erro ao resetar dados: ${error.message}`
-          : 'Erro ao resetar dados de estudo', 
-        {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-          progress: undefined,
-          theme: "dark",
-        }
-      );
-    } finally {
-      setResetting(false);
-    }
-  }
-
-  const events = sessions?.map(session => ({
+  const events = calendarSessions.data?.map(session => ({
     id: session.id,
-    title: `${session.sub_subject.subject.title} - ${session.sub_subject.title}`,
-    date: session.scheduled_date,
-    backgroundColor: session.completed_at
-      ? '#10B981'
-      : session.sub_subject.subject.color || DEFAULT_COLORS[session.sub_subject.difficulty],
-    borderColor: 'transparent',
+    title: session.title,
+    date: session.date,
+    backgroundColor: session.backgroundColor,
+    borderColor: session.borderColor,
     className: 'cursor-pointer',
-    extendedProps: {
-      completed: !!session.completed_at,
-      difficulty: session.sub_subject.difficulty,
-      session: session, // Pass the full session object
-    },
+    extendedProps: session.extendedProps,
   })) || [];
+
+  const handleEventClick = ({ event }: any) => {
+    const sessionData = event.extendedProps.session;
+    if (sessionData) {
+      setSelectedSession(sessionData);
+      setSessionNotes(sessionData.notes || '');
+      setShowSessionModal(true);
+    }
+  };
+
+  const handleCompleteSession = async () => {
+    if (!selectedSession) return;
+
+    try {
+      await completeStudySession.mutateAsync({
+        sessionId: selectedSession.id,
+        notes: sessionNotes.trim() || undefined
+      });
+      
+      setShowSessionModal(false);
+      setSelectedSession(null);
+      setSessionNotes('');
+    } catch (error) {
+      console.error('Error completing session:', error);
+    }
+  };
+
+  const handleDeleteSession = async () => {
+    if (!selectedSession) return;
+
+    if (!confirm('Tem certeza que deseja remover esta sessão de estudo?')) {
+      return;
+    }
+
+    try {
+      await deleteStudySession.mutateAsync(selectedSession.id);
+      
+      setShowSessionModal(false);
+      setSelectedSession(null);
+      setSessionNotes('');
+    } catch (error) {
+      console.error('Error deleting session:', error);
+    }
+  };
+
+  const getDifficultyLabel = (difficulty: string) => {
+    switch (difficulty) {
+      case 'iniciante': return 'Iniciante';
+      case 'intermediario': return 'Intermediário';
+      case 'avancado': return 'Avançado';
+      default: return difficulty;
+    }
+  };
+
+  const getDifficultyColor = (difficulty: string) => {
+    return DEFAULT_COLORS[difficulty as keyof typeof DEFAULT_COLORS] || DEFAULT_COLORS.iniciante;
+  };
 
   return (
     <Layout>
@@ -116,21 +129,12 @@ export default function Dashboard() {
         <Flex justify="between" align="center" mb="6">
           <Box>
             <Text size="6" weight="bold" mb="1" style={{ display: 'block' }}>
-              Calendário de estudo
+              Calendário de Estudos
             </Text>
             <Text size="3" color="gray">
               Acompanhe suas sessões de estudo e seu progresso
             </Text>
           </Box>
-          <Button
-            color="red"
-            variant="solid"
-            onClick={handleReset}
-            disabled={resetting || isLoading}
-          >
-            <RotateCcw size={16} style={{ animation: resetting ? 'spin 1s linear infinite' : 'none' }} />
-            {resetting ? 'Resetando...' : 'Resetar Dados'}
-          </Button>
         </Flex>
 
         <Card size="3">
@@ -140,14 +144,26 @@ export default function Dashboard() {
                 <Box style={{ width: '16px', height: '16px', borderRadius: '50%', backgroundColor: '#10B981' }} />
                 <Text size="2" color="gray">Concluído</Text>
               </Flex>
+              <Flex align="center" gap="2">
+                <Box style={{ width: '16px', height: '16px', borderRadius: '50%', backgroundColor: DEFAULT_COLORS.iniciante }} />
+                <Text size="2" color="gray">Iniciante</Text>
+              </Flex>
+              <Flex align="center" gap="2">
+                <Box style={{ width: '16px', height: '16px', borderRadius: '50%', backgroundColor: DEFAULT_COLORS.intermediario }} />
+                <Text size="2" color="gray">Intermediário</Text>
+              </Flex>
+              <Flex align="center" gap="2">
+                <Box style={{ width: '16px', height: '16px', borderRadius: '50%', backgroundColor: DEFAULT_COLORS.avancado }} />
+                <Text size="2" color="gray">Avançado</Text>
+              </Flex>
             </Flex>
           </Box>
 
-          {isLoading ? (
+          {calendarSessions.isLoading ? (
             <Flex justify="center" align="center" style={{ height: '200px' }}>
-              <Text>Carregando...</Text>
+              <Text>Carregando sessões...</Text>
             </Flex>
-          ) : error ? (
+          ) : calendarSessions.error ? (
             <Flex justify="center" align="center" style={{ height: '200px' }}>
               <Text color="red">Erro ao carregar sessões de estudo</Text>
             </Flex>
@@ -156,19 +172,16 @@ export default function Dashboard() {
               plugins={[dayGridPlugin, interactionPlugin]}
               initialView="dayGridMonth"
               events={events}
-              eventClick={({ event }) => {
-                const sessionData = event.extendedProps.session;
-                if (sessionData) {
-                  setSelectedSession(sessionData);
-                }
-              }}
+              eventClick={handleEventClick}
               eventContent={(eventInfo) => {
                 const completed = eventInfo.event.extendedProps.completed;
+                const hours = eventInfo.event.extendedProps.hours;
                 return (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px' }}>
-                    {completed && <CheckCircle size={16} color="white" />}
-                    <span style={{ fontSize: '14px', color: 'white', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {eventInfo.event.title}
+                    {completed && <CheckCircle size={12} color="white" />}
+                    <Clock size={12} color="white" />
+                    <span style={{ fontSize: '11px', color: 'white', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {hours}h - {eventInfo.event.title}
                     </span>
                   </div>
                 );
@@ -180,16 +193,112 @@ export default function Dashboard() {
           )}
         </Card>
 
-        {selectedSession && (
-          <QuizModal
-            session={selectedSession}
-            onClose={() => setSelectedSession(null)}
-            onComplete={() => {
-              setSelectedSession(null);
-              // Refetch sessions to update the calendar
-            }}
-          />
-        )}
+        {/* Session Details Modal */}
+        <Dialog.Root open={showSessionModal} onOpenChange={setShowSessionModal}>
+          <Dialog.Content style={{ maxWidth: '600px' }}>
+            <Dialog.Title>
+              Sessão de Estudo
+            </Dialog.Title>
+            
+            {selectedSession && (
+              <Box mt="4">
+                <Flex direction="column" gap="4">
+                  <Box>
+                    <Text size="4" weight="medium" mb="2" style={{ display: 'block' }}>
+                      <BookOpen size={16} style={{ display: 'inline', marginRight: '8px' }} />
+                      {selectedSession.technology.name} - {selectedSession.subtopic.name}
+                    </Text>
+                    <Flex gap="4" align="center">
+                      <Text size="2" color="gray">
+                        📅 {format(new Date(selectedSession.scheduled_date), 'dd/MM/yyyy')}
+                      </Text>
+                      <Text size="2" color="gray">
+                        ⏱️ {selectedSession.scheduled_hours}h
+                      </Text>
+                      <Box
+                        style={{
+                          padding: '2px 8px',
+                          borderRadius: '12px',
+                          fontSize: '12px',
+                          fontWeight: 'medium',
+                          backgroundColor: `${getDifficultyColor(selectedSession.subtopic.difficulty_level)}20`,
+                          color: getDifficultyColor(selectedSession.subtopic.difficulty_level),
+                          border: `1px solid ${getDifficultyColor(selectedSession.subtopic.difficulty_level)}40`
+                        }}
+                      >
+                        {getDifficultyLabel(selectedSession.subtopic.difficulty_level)}
+                      </Box>
+                    </Flex>
+                  </Box>
+
+                  {selectedSession.is_completed && (
+                    <Box p="3" style={{ 
+                      backgroundColor: 'var(--green-3)', 
+                      borderRadius: '8px',
+                      border: '1px solid var(--green-6)'
+                    }}>
+                      <Flex align="center" gap="2">
+                        <CheckCircle size={16} color="var(--green-9)" />
+                        <Text size="2" style={{ color: 'var(--green-11)' }}>
+                          Concluído em {format(new Date(selectedSession.completed_at!), 'dd/MM/yyyy HH:mm')}
+                        </Text>
+                      </Flex>
+                    </Box>
+                  )}
+
+                  <Box>
+                    <Text as="label" size="2" weight="medium" mb="2" style={{ display: 'block' }}>
+                      Notas (opcional)
+                    </Text>
+                    <textarea
+                      value={sessionNotes}
+                      onChange={(e) => setSessionNotes(e.target.value)}
+                      placeholder="Adicione suas anotações sobre esta sessão de estudo..."
+                      style={{
+                        width: '100%',
+                        minHeight: '80px',
+                        padding: '8px',
+                        borderRadius: '6px',
+                        border: '1px solid var(--gray-6)',
+                        backgroundColor: 'var(--gray-2)',
+                        color: 'var(--gray-12)',
+                        fontSize: '14px',
+                        fontFamily: 'inherit',
+                        resize: 'vertical'
+                      }}
+                      disabled={selectedSession.is_completed}
+                    />
+                  </Box>
+
+                  <Flex justify="between" gap="3">
+                    <Button
+                      variant="outline"
+                      color="red"
+                      onClick={handleDeleteSession}
+                    >
+                      Remover Sessão
+                    </Button>
+                    
+                    <Flex gap="3">
+                      <Dialog.Close>
+                        <Button variant="outline">
+                          Fechar
+                        </Button>
+                      </Dialog.Close>
+                      
+                      {!selectedSession.is_completed && (
+                        <Button onClick={handleCompleteSession}>
+                          <CheckCircle size={16} />
+                          Marcar como Concluído
+                        </Button>
+                      )}
+                    </Flex>
+                  </Flex>
+                </Flex>
+              </Box>
+            )}
+          </Dialog.Content>
+        </Dialog.Root>
       </Box>
     </Layout>
   );

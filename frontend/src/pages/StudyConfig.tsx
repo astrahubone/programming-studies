@@ -1,32 +1,22 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import { Calendar, CheckCircle, Trash2 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
-import { format, addDays, startOfWeek, addWeeks } from "date-fns";
+import { format } from "date-fns";
 import { toast } from "react-toastify";
-import { useSubjects } from "../hooks/api/useSubjects";
-import { useStudySessions } from "../hooks/api/useStudySessions";
 import { useTechnologies } from "../hooks/api/useTechnologies";
+import { useStudyConfig } from "../hooks/api/useStudyConfig";
 import { getTechnologyIcon } from "../utils/technologyIcons";
 import { Box, Flex, Text, Button, Card, TextField, Checkbox, Select } from '@radix-ui/themes';
 import React from "react";
-
-interface SubSubject {
-  id: string;
-  title: string;
-  difficulty: "fácil" | "médio" | "difícil";
-  subject: {
-    title: string;
-  };
-}
 
 interface StudyDay {
   name: string;
   label: string;
   selected: boolean;
-  hours: string; // Changed to string to handle "01:00" format
-  dayIndex: number; // 0 = Monday, 6 = Sunday
+  hours: string;
+  dayIndex: number;
   hasError: boolean;
 }
 
@@ -61,12 +51,17 @@ const timeOptions = generateTimeOptions();
 export default function StudyConfig() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { subjects: { data: subjectsData } } = useSubjects();
-  const { createStudySession } = useStudySessions();
   const { technologies: { data: technologiesData, isLoading: technologiesLoading } } = useTechnologies();
+  const { 
+    studyConfig: { data: existingConfig, isLoading: configLoading },
+    createStudyConfig,
+    updateStudyConfig,
+    generateSchedule
+  } = useStudyConfig();
+  
   const [startDate, setStartDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [loading, setLoading] = useState(false);
-  const [showPreferences, setShowPreferences] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   // Study days configuration (Monday = 0, Sunday = 6)
   const [studyDays, setStudyDays] = useState<StudyDay[]>([
@@ -82,9 +77,42 @@ export default function StudyConfig() {
   // Technologies configuration - all selected by default, populated from API
   const [technologies, setTechnologies] = useState<Technology[]>([]);
 
-  // Update technologies when data is loaded
-  React.useEffect(() => {
-    if (technologiesData && technologiesData.length > 0) {
+  // Load existing configuration
+  useEffect(() => {
+    if (existingConfig && !isEditing) {
+      setStartDate(existingConfig.start_date);
+      
+      // Load study days
+      const configStudyDays = existingConfig.study_days || [];
+      setStudyDays(prev => prev.map(day => {
+        const configDay = configStudyDays.find((cd: any) => cd.day === day.name);
+        if (configDay) {
+          return {
+            ...day,
+            selected: true,
+            hours: `${configDay.hours.toString().padStart(2, '0')}:00`
+          };
+        }
+        return { ...day, selected: false };
+      }));
+
+      // Load selected technologies
+      if (technologiesData && existingConfig.selected_technologies) {
+        const mappedTechnologies = technologiesData.map(tech => ({
+          id: tech.id,
+          name: tech.name,
+          selected: existingConfig.selected_technologies.includes(tech.id),
+          total_hours: tech.total_hours,
+          subtopics_count: tech.subtopics_count,
+        }));
+        setTechnologies(mappedTechnologies);
+      }
+    }
+  }, [existingConfig, technologiesData, isEditing]);
+
+  // Update technologies when data is loaded (only if no existing config)
+  useEffect(() => {
+    if (technologiesData && technologiesData.length > 0 && !existingConfig) {
       const mappedTechnologies = technologiesData.map(tech => ({
         id: tech.id,
         name: tech.name,
@@ -94,18 +122,7 @@ export default function StudyConfig() {
       }));
       setTechnologies(mappedTechnologies);
     }
-  }, [technologiesData]);
-
-  console.log(technologies, 'technologies')
-
-  const subSubjects = subjectsData?.flatMap(subject => 
-    subject.sub_subjects.map(sub => ({
-      ...sub,
-      subject: {
-        title: subject.title
-      }
-    }))
-  ) || [];
+  }, [technologiesData, existingConfig]);
 
   const handleSelectAllTechnologies = (checked: boolean) => {
     setTechnologies(prev => prev.map(tech => ({ ...tech, selected: checked })));
@@ -145,7 +162,7 @@ export default function StudyConfig() {
     return hours + (minutes / 60);
   };
 
-  // Fixed validation logic - only check days and technologies
+  // Validation logic
   const selectedDays = studyDays.filter(day => day.selected);
   const selectedTechs = technologies.filter(tech => tech.selected);
   const hasValidHours = selectedDays.length === 0 || selectedDays.every(day => timeToDecimal(day.hours) >= 1 && !day.hasError);
@@ -158,125 +175,53 @@ export default function StudyConfig() {
   const selectedTechCount = technologies.filter(tech => tech.selected).length;
   const allTechnologiesSelected = selectedTechCount === technologies.length;
 
-  async function handleGenerateSchedule() {
+  async function handleSaveConfiguration() {
     if (!isFormValid) {
       if (selectedDays.length === 0) {
-        toast.error("Selecione pelo menos um dia da semana para estudar", {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-          progress: undefined,
-          theme: "dark",
-        });
+        toast.error("Selecione pelo menos um dia da semana para estudar");
       } else if (selectedTechs.length === 0) {
-        toast.error("Selecione pelo menos uma tecnologia para estudar", {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-          progress: undefined,
-          theme: "dark",
-        });
+        toast.error("Selecione pelo menos uma tecnologia para estudar");
       } else if (!hasValidHours) {
-        toast.error("Todos os dias selecionados devem ter pelo menos 1 hora de estudo", {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-          progress: undefined,
-          theme: "dark",
-        });
+        toast.error("Todos os dias selecionados devem ter pelo menos 1 hora de estudo");
       }
       return;
     }
 
     setLoading(true);
     try {
-      // Create study sessions based on selected days, hours, and technologies
-      const studySessions = [];
+      const studyDaysData = selectedDays.map(day => ({
+        day: day.name,
+        hours: timeToDecimal(day.hours)
+      }));
 
-      // Use all available subjects if any exist
-      const availableSubjects = subSubjects.length > 0 ? subSubjects : [];
+      const selectedTechnologyIds = selectedTechs.map(tech => tech.id);
 
-      // Calculate total hours per week
-      const totalWeeklyHours = selectedDays.reduce((sum, day) => sum + timeToDecimal(day.hours), 0);
-      
-      // Create a schedule starting from the selected start date for 4 weeks
-      for (let week = 0; week < 4; week++) {
-        const weekStart = startOfWeek(addWeeks(new Date(startDate), week), { weekStartsOn: 1 }); // Monday start
-        
-        selectedDays.forEach(day => {
-          const dayDate = addDays(weekStart, day.dayIndex);
-          const dayHours = timeToDecimal(day.hours);
-          
-          // For each hour on this day, assign a technology/subject
-          for (let hour = 0; hour < Math.floor(dayHours); hour++) {
-            // Cycle through selected technologies
-            const techIndex = (week * totalWeeklyHours + selectedDays.indexOf(day) * dayHours + hour) % selectedTechs.length;
-            const selectedTech = selectedTechs[techIndex];
-            
-            // Find a subject that matches this technology (or use first available)
-            let matchingSubject = null;
-            if (availableSubjects.length > 0) {
-              matchingSubject = availableSubjects.find(sub => 
-                sub.title.toLowerCase().includes(selectedTech.name.toLowerCase()) ||
-                sub.subject.title.toLowerCase().includes(selectedTech.name.toLowerCase())
-              ) || availableSubjects[0];
-            }
+      const configData = {
+        startDate,
+        studyDays: studyDaysData,
+        selectedTechnologies: selectedTechnologyIds,
+        generateSchedule: true
+      };
 
-            if (matchingSubject) {
-              studySessions.push({
-                subSubjectId: matchingSubject.id,
-                scheduledDate: format(dayDate, "yyyy-MM-dd"),
-              });
-            }
-          }
+      if (existingConfig && isEditing) {
+        await updateStudyConfig.mutateAsync({
+          id: existingConfig.id,
+          data: configData
         });
+        
+        // Regenerate schedule
+        await generateSchedule.mutateAsync(existingConfig.id);
+      } else {
+        await createStudyConfig.mutateAsync(configData);
       }
 
-      // Only create sessions if we have subjects to work with
-      if (studySessions.length > 0) {
-        // Create study sessions sequentially
-        for (const session of studySessions) {
-          await createStudySession.mutateAsync(session);
-        }
-      }
-
-      toast.success("Cronograma de estudos gerado com sucesso!", {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        theme: "light",
-      });
-      
-      // Clear form state
-      setShowPreferences(true);
+      setIsEditing(false);
       
       // Navigate to Calendar tab after successful generation
       navigate('/dashboard');
       
     } catch (error) {
-      console.error("Erro ao gerar cronograma:", error);
-      toast.error("Falha ao gerar cronograma de estudo", {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
-        theme: "dark",
-      });
+      console.error("Erro ao salvar configuração:", error);
     } finally {
       setLoading(false);
     }
@@ -287,7 +232,19 @@ export default function StudyConfig() {
       <Layout>
         <Box p="6">
           <Flex justify="center" align="center" style={{ height: '200px' }}>
-            <Text color="gray">Faça login para gerenciar suas matérias</Text>
+            <Text color="gray">Faça login para configurar seus estudos</Text>
+          </Flex>
+        </Box>
+      </Layout>
+    );
+  }
+
+  if (configLoading || technologiesLoading) {
+    return (
+      <Layout>
+        <Box p="6">
+          <Flex justify="center" align="center" style={{ height: '200px' }}>
+            <Text>Carregando configurações...</Text>
           </Flex>
         </Box>
       </Layout>
@@ -295,236 +252,319 @@ export default function StudyConfig() {
   }
 
   const totalHours = selectedDays.reduce((sum, day) => sum + timeToDecimal(day.hours), 0);
+  const totalSelectedHours = selectedTechs.reduce((sum, tech) => sum + tech.total_hours, 0);
 
   return (
     <Layout>
       <Box p="6">
         <Box mb="6">
           <Text size="6" weight="bold" mb="1" style={{ display: 'block' }}>
-            Configuração do estudos
+            Configuração de Estudos
           </Text>
           <Text size="3" color="gray">
-            Configure suas preferências para gerar um cronograma personalizado
+            {existingConfig && !isEditing 
+              ? "Sua configuração atual de estudos. Clique em 'Editar' para modificar."
+              : "Configure suas preferências para gerar um cronograma personalizado"
+            }
           </Text>
         </Box>
 
         <Card size="3">
           <Box p="6">
-            <Text size="5" weight="medium" mb="6" style={{ display: 'block' }}>
-              Gerador de cronograma
-            </Text>
-
-            <Flex direction="column" gap="8">
-              {/* Start Date Section */}
+            {existingConfig && !isEditing ? (
+              // Display existing configuration
               <Box>
-                <Text size="4" weight="medium" mb="4" style={{ display: 'block' }}>
-                  📅 Data de início
-                </Text>
-                <Text size="2" color="gray" mb="4" style={{ display: 'block' }}>
-                  Escolha quando você deseja começar seu cronograma de estudos
-                </Text>
-                <TextField.Root
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  style={{ maxWidth: '200px' }}
-                />
-              </Box>
-
-              {/* Study Days Section */}
-              <Box>
-                <Text size="4" weight="medium" mb="4" style={{ display: 'block' }}>
-                  📅 Dias disponíveis para estudar
-                </Text>
-                <Text size="2" color="gray" mb="4" style={{ display: 'block' }}>
-                  Clique nos dias da semana para selecioná-los
-                </Text>
-                
-                <Flex direction="column" gap="4">
-                  <Flex wrap="wrap" gap="3">
-                    {studyDays.map((day) => (
-                      <Card 
-                        key={day.name} 
-                        variant="surface"
-                        style={{ 
-                          cursor: 'pointer',
-                          minWidth: '120px',
-                          border: day.selected ? '2px solid var(--indigo-9)' : '2px solid var(--gray-6)',
-                          backgroundColor: day.selected ? 'var(--indigo-3)' : 'var(--gray-2)'
-                        }}
-                        onClick={() => handleDayToggle(day.name, !day.selected)}
-                      >
-                        <Flex align="center" justify="center" gap="2" p="3">
-                          <Box
-                            style={{
-                              width: '16px',
-                              height: '16px',
-                              border: '2px solid var(--gray-8)',
-                              borderRadius: '3px',
-                              backgroundColor: day.selected ? 'var(--indigo-9)' : 'transparent',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center'
-                            }}
-                          >
-                            {day.selected && <CheckCircle size={12} color="white" />}
-                          </Box>
-                          <Text size="2" weight="medium" style={{ color: day.selected ? 'var(--indigo-11)' : 'var(--gray-11)' }}>
-                            {day.label}
-                          </Text>
-                        </Flex>
-                      </Card>
-                    ))}
-                  </Flex>
-
-                  {selectedDays.length > 0 && (
-                    <Box>
-                      <Text size="3" weight="medium" mb="3" style={{ display: 'block' }}>
-                        Horas de estudo por dia:
-                      </Text>
-                      <Flex direction="column" gap="3">
-                        {selectedDays.map((day) => (
-                          <Box key={day.name}>
-                            <Flex align="center" gap="3">
-                              <Text size="2" style={{ minWidth: '80px' }}>
-                                {day.label}:
-                              </Text>
-                              <Select.Root
-                                value={day.hours}
-                                onValueChange={(value) => handleHoursChange(day.name, value)}
-                              >
-                                <Select.Trigger style={{ width: '120px' }} />
-                                <Select.Content>
-                                  {timeOptions.map((option) => (
-                                    <Select.Item key={option.value} value={option.value}>
-                                      {option.label}
-                                    </Select.Item>
-                                  ))}
-                                </Select.Content>
-                              </Select.Root>
-                              <Button
-                                variant="ghost"
-                                color="red"
-                                size="1"
-                                onClick={() => handleRemoveDay(day.name)}
-                                style={{ cursor: 'pointer' }}
-                              >
-                                <Trash2 size={16} />
-                              </Button>
-                            </Flex>
-                          </Box>
-                        ))}
-                        <Text size="2" color="gray" mt="2" style={{ 
-                          padding: '8px 12px', 
-                          backgroundColor: 'var(--blue-3)', 
-                          borderRadius: '6px',
-                          color: 'var(--blue-11)'
-                        }}>
-                          📊 Total semanal: {totalHours.toFixed(1)} hora(s)
-                        </Text>
-                      </Flex>
-                    </Box>
-                  )}
-                </Flex>
-              </Box>
-
-              {/* Technologies Section */}
-              <Box>
-                <Flex justify="between" align="center" mb="4">
-                  <Text size="4" weight="medium">
-                    💻 Tecnologias que deseja estudar
+                <Flex justify="between" align="center" mb="6">
+                  <Text size="5" weight="medium">
+                    Configuração Atual
                   </Text>
-                  <Flex align="center" gap="2">
-                    <Checkbox
-                      checked={allTechnologiesSelected}
-                      onCheckedChange={(checked) => handleSelectAllTechnologies(!!checked)}
-                    />
-                    <Text size="2" color="gray">
-                      Selecionar todas
-                    </Text>
-                  </Flex>
+                  <Button onClick={() => setIsEditing(true)}>
+                    Editar Configuração
+                  </Button>
                 </Flex>
-                <Text size="2" color="gray" mb="4" style={{ display: 'block' }}>
-                  Todas as tecnologias estão selecionadas por padrão. Desmarque as que você já domina ou não deseja estudar.
+
+                <Flex direction="column" gap="6">
+                  <Box>
+                    <Text size="4" weight="medium" mb="2" style={{ display: 'block' }}>
+                      📅 Data de início: {format(new Date(existingConfig.start_date), 'dd/MM/yyyy')}
+                    </Text>
+                  </Box>
+
+                  <Box>
+                    <Text size="4" weight="medium" mb="2" style={{ display: 'block' }}>
+                      📅 Dias de estudo
+                    </Text>
+                    <Flex wrap="wrap" gap="2">
+                      {existingConfig.study_days?.map((day: any) => (
+                        <Box key={day.day} p="2" style={{ 
+                          backgroundColor: 'var(--indigo-3)', 
+                          borderRadius: '6px',
+                          border: '1px solid var(--indigo-6)'
+                        }}>
+                          <Text size="2" style={{ color: 'var(--indigo-11)' }}>
+                            {studyDays.find(d => d.name === day.day)?.label}: {day.hours}h
+                          </Text>
+                        </Box>
+                      ))}
+                    </Flex>
+                    <Text size="2" color="gray" mt="2">
+                      Total semanal: {existingConfig.total_weekly_hours}h
+                    </Text>
+                  </Box>
+
+                  <Box>
+                    <Text size="4" weight="medium" mb="2" style={{ display: 'block' }}>
+                      💻 Tecnologias selecionadas
+                    </Text>
+                    <Flex wrap="wrap" gap="2">
+                      {technologies.filter(tech => tech.selected).map(tech => (
+                        <Box key={tech.id} p="2" style={{ 
+                          backgroundColor: 'var(--green-3)', 
+                          borderRadius: '6px',
+                          border: '1px solid var(--green-6)'
+                        }}>
+                          <Text size="2" style={{ color: 'var(--green-11)' }}>
+                            {tech.name}: {tech.total_hours}h
+                          </Text>
+                        </Box>
+                      ))}
+                    </Flex>
+                    <Text size="2" color="gray" mt="2">
+                      Total de conteúdo: {existingConfig.total_selected_hours}h
+                    </Text>
+                  </Box>
+
+                  <Box p="4" style={{ 
+                    backgroundColor: 'var(--blue-2)', 
+                    borderRadius: '8px',
+                    border: '1px solid var(--blue-6)'
+                  }}>
+                    <Text size="3" weight="medium" style={{ color: 'var(--blue-11)' }}>
+                      📊 Estimativa de conclusão: {Math.ceil(existingConfig.total_selected_hours / existingConfig.total_weekly_hours)} semanas
+                    </Text>
+                  </Box>
+                </Flex>
+              </Box>
+            ) : (
+              // Configuration form
+              <Box>
+                <Text size="5" weight="medium" mb="6" style={{ display: 'block' }}>
+                  {isEditing ? 'Editar Configuração' : 'Nova Configuração'}
                 </Text>
-                
-                {technologiesLoading ? (
-                  <Flex justify="center" align="center" p="4">
-                    <Text>Carregando tecnologias...</Text>
-                  </Flex>
-                ) : (
-                  <Flex wrap="wrap" gap="3">
-                    {technologies.map((tech) => {
-                      const IconComponent = getTechnologyIcon(tech.name);
-                      return (
-                        <Card 
-                          key={tech.id}
-                          variant={tech.selected ? "solid" : "surface"}
-                          style={{ 
-                            cursor: 'pointer',
-                            minWidth: '160px',
-                            backgroundColor: tech.selected ? 'var(--green-9)' : 'var(--gray-3)',
-                            color: tech.selected ? 'white' : 'var(--gray-12)',
-                            border: tech.selected ? '2px solid var(--green-11)' : '1px solid var(--gray-6)'
-                          }}
-                          onClick={() => handleTechnologyToggle(tech.id, !tech.selected)}
-                        >
-                          <Flex direction="column" gap="2" p="3">
-                            <Flex align="center" justify="center" gap="2">
-                              <IconComponent size={16} />
-                              <Text size="2" weight="medium">
-                                {tech.name}
+
+                <Flex direction="column" gap="8">
+                  {/* Start Date Section */}
+                  <Box>
+                    <Text size="4" weight="medium" mb="4" style={{ display: 'block' }}>
+                      📅 Data de início
+                    </Text>
+                    <Text size="2" color="gray" mb="4" style={{ display: 'block' }}>
+                      Escolha quando você deseja começar seu cronograma de estudos
+                    </Text>
+                    <TextField.Root
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      style={{ maxWidth: '200px' }}
+                    />
+                  </Box>
+
+                  {/* Study Days Section */}
+                  <Box>
+                    <Text size="4" weight="medium" mb="4" style={{ display: 'block' }}>
+                      📅 Dias disponíveis para estudar
+                    </Text>
+                    <Text size="2" color="gray" mb="4" style={{ display: 'block' }}>
+                      Clique nos dias da semana para selecioná-los
+                    </Text>
+                    
+                    <Flex direction="column" gap="4">
+                      <Flex wrap="wrap" gap="3">
+                        {studyDays.map((day) => (
+                          <Card 
+                            key={day.name} 
+                            variant="surface"
+                            style={{ 
+                              cursor: 'pointer',
+                              minWidth: '120px',
+                              border: day.selected ? '2px solid var(--indigo-9)' : '2px solid var(--gray-6)',
+                              backgroundColor: day.selected ? 'var(--indigo-3)' : 'var(--gray-2)'
+                            }}
+                            onClick={() => handleDayToggle(day.name, !day.selected)}
+                          >
+                            <Flex align="center" justify="center" gap="2" p="3">
+                              <Box
+                                style={{
+                                  width: '16px',
+                                  height: '16px',
+                                  border: '2px solid var(--gray-8)',
+                                  borderRadius: '3px',
+                                  backgroundColor: day.selected ? 'var(--indigo-9)' : 'transparent',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center'
+                                }}
+                              >
+                                {day.selected && <CheckCircle size={12} color="white" />}
+                              </Box>
+                              <Text size="2" weight="medium" style={{ color: day.selected ? 'var(--indigo-11)' : 'var(--gray-11)' }}>
+                                {day.label}
                               </Text>
-                              {tech.selected && <CheckCircle size={14} />}
                             </Flex>
-                            <Text size="1" style={{ 
-                              textAlign: 'center',
-                              opacity: 0.8,
-                              color: tech.selected ? 'white' : 'var(--gray-11)'
+                          </Card>
+                        ))}
+                      </Flex>
+
+                      {selectedDays.length > 0 && (
+                        <Box>
+                          <Text size="3" weight="medium" mb="3" style={{ display: 'block' }}>
+                            Horas de estudo por dia:
+                          </Text>
+                          <Flex direction="column" gap="3">
+                            {selectedDays.map((day) => (
+                              <Box key={day.name}>
+                                <Flex align="center" gap="3">
+                                  <Text size="2" style={{ minWidth: '80px' }}>
+                                    {day.label}:
+                                  </Text>
+                                  <Select.Root
+                                    value={day.hours}
+                                    onValueChange={(value) => handleHoursChange(day.name, value)}
+                                  >
+                                    <Select.Trigger style={{ width: '120px' }} />
+                                    <Select.Content>
+                                      {timeOptions.map((option) => (
+                                        <Select.Item key={option.value} value={option.value}>
+                                          {option.label}
+                                        </Select.Item>
+                                      ))}
+                                    </Select.Content>
+                                  </Select.Root>
+                                  <Button
+                                    variant="ghost"
+                                    color="red"
+                                    size="1"
+                                    onClick={() => handleRemoveDay(day.name)}
+                                    style={{ cursor: 'pointer' }}
+                                  >
+                                    <Trash2 size={16} />
+                                  </Button>
+                                </Flex>
+                              </Box>
+                            ))}
+                            <Text size="2" color="gray" mt="2" style={{ 
+                              padding: '8px 12px', 
+                              backgroundColor: 'var(--blue-3)', 
+                              borderRadius: '6px',
+                              color: 'var(--blue-11)'
                             }}>
-                              {tech.total_hours}h • {tech.subtopics_count} tópicos
+                              📊 Total semanal: {totalHours.toFixed(1)} hora(s)
                             </Text>
                           </Flex>
-                        </Card>
-                      );
-                    })}
-                  </Flex>
-                )}
-                
-                <Text size="2" color="gray" mt="3" style={{ 
-                  padding: '8px 12px', 
-                  backgroundColor: 'var(--green-3)', 
-                  borderRadius: '6px',
-                  color: 'var(--green-11)'
-                }}>
-                  ✅ {selectedTechCount} tecnologia(s) selecionada(s)
-                </Text>
-              </Box>
+                        </Box>
+                      )}
+                    </Flex>
+                  </Box>
 
-              {/* Action Buttons */}
-              <Flex gap="3" justify="end">
-                {showPreferences && (
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowPreferences(false)}
-                  >
-                    Editar preferências
-                  </Button>
-                )}
-                <Button
-                  onClick={handleGenerateSchedule}
-                  disabled={loading || !isFormValid}
-                  size="3"
-                  style={{
-                    opacity: !isFormValid ? 0.5 : 1,
-                    cursor: !isFormValid ? 'not-allowed' : 'pointer'
-                  }}
-                >
-                  <Calendar size={16} />
-                  {loading ? "Gerando cronograma..." : "Gerar Cronograma"}
-                </Button>
-              </Flex>
-            </Flex>
+                  {/* Technologies Section */}
+                  <Box>
+                    <Flex justify="between" align="center" mb="4">
+                      <Text size="4" weight="medium">
+                        💻 Tecnologias que deseja estudar
+                      </Text>
+                      <Flex align="center" gap="2">
+                        <Checkbox
+                          checked={allTechnologiesSelected}
+                          onCheckedChange={(checked) => handleSelectAllTechnologies(!!checked)}
+                        />
+                        <Text size="2" color="gray">
+                          Selecionar todas
+                        </Text>
+                      </Flex>
+                    </Flex>
+                    <Text size="2" color="gray" mb="4" style={{ display: 'block' }}>
+                      Todas as tecnologias estão selecionadas por padrão. Desmarque as que você já domina ou não deseja estudar.
+                    </Text>
+                    
+                    {technologiesLoading ? (
+                      <Flex justify="center" align="center" p="4">
+                        <Text>Carregando tecnologias...</Text>
+                      </Flex>
+                    ) : (
+                      <Flex wrap="wrap" gap="3">
+                        {technologies.map((tech) => {
+                          const IconComponent = getTechnologyIcon(tech.name);
+                          return (
+                            <Card 
+                              key={tech.id}
+                              variant={tech.selected ? "solid" : "surface"}
+                              style={{ 
+                                cursor: 'pointer',
+                                minWidth: '160px',
+                                backgroundColor: tech.selected ? 'var(--green-9)' : 'var(--gray-3)',
+                                color: tech.selected ? 'white' : 'var(--gray-12)',
+                                border: tech.selected ? '2px solid var(--green-11)' : '1px solid var(--gray-6)'
+                              }}
+                              onClick={() => handleTechnologyToggle(tech.id, !tech.selected)}
+                            >
+                              <Flex direction="column" gap="2" p="3">
+                                <Flex align="center" justify="center" gap="2">
+                                  <IconComponent size={16} />
+                                  <Text size="2" weight="medium">
+                                    {tech.name}
+                                  </Text>
+                                  {tech.selected && <CheckCircle size={14} />}
+                                </Flex>
+                                <Text size="1" style={{ 
+                                  textAlign: 'center',
+                                  opacity: 0.8,
+                                  color: tech.selected ? 'white' : 'var(--gray-11)'
+                                }}>
+                                  {tech.total_hours}h • {tech.subtopics_count} tópicos
+                                </Text>
+                              </Flex>
+                            </Card>
+                          );
+                        })}
+                      </Flex>
+                    )}
+                    
+                    <Text size="2" color="gray" mt="3" style={{ 
+                      padding: '8px 12px', 
+                      backgroundColor: 'var(--green-3)', 
+                      borderRadius: '6px',
+                      color: 'var(--green-11)'
+                    }}>
+                      ✅ {selectedTechCount} tecnologia(s) selecionada(s) • {totalSelectedHours}h de conteúdo
+                    </Text>
+                  </Box>
+
+                  {/* Action Buttons */}
+                  <Flex gap="3" justify="end">
+                    {isEditing && (
+                      <Button
+                        variant="outline"
+                        onClick={() => setIsEditing(false)}
+                      >
+                        Cancelar
+                      </Button>
+                    )}
+                    <Button
+                      onClick={handleSaveConfiguration}
+                      disabled={loading || !isFormValid}
+                      size="3"
+                      style={{
+                        opacity: !isFormValid ? 0.5 : 1,
+                        cursor: !isFormValid ? 'not-allowed' : 'pointer'
+                      }}
+                    >
+                      <Calendar size={16} />
+                      {loading ? "Salvando..." : isEditing ? "Salvar Alterações" : "Criar Configuração"}
+                    </Button>
+                  </Flex>
+                </Flex>
+              </Box>
+            )}
           </Box>
 
           {/* Information Section */}
@@ -537,25 +577,19 @@ export default function StudyConfig() {
                 • O sistema distribui as tecnologias selecionadas ao longo dos dias e horas escolhidos
               </Text>
               <Text size="2" color="gray">
-                • Cada hora de estudo é dedicada a uma tecnologia específica
+                • Cada sessão de estudo é dedicada a um subtópico específico de uma tecnologia
               </Text>
               <Text size="2" color="gray">
-                • O cronograma é gerado para 4 semanas consecutivas a partir da data escolhida
+                • As tecnologias são estudadas na ordem de complexidade (HTML → CSS → JavaScript → etc.)
               </Text>
               <Text size="2" color="gray">
-                • Tópicos com nível fácil são revisados a cada 7 dias
+                • Os subtópicos são distribuídos respeitando a carga horária de cada um
               </Text>
               <Text size="2" color="gray">
-                • Tópicos com nível médio são revisados a cada 5 dias
+                • Você pode marcar sessões como concluídas no calendário
               </Text>
               <Text size="2" color="gray">
-                • Tópicos com nível difícil são revisados a cada 3 dias
-              </Text>
-              <Text size="2" color="gray">
-                • Você pode marcar tópicos como concluídos no calendário
-              </Text>
-              <Text size="2" color="gray">
-                • Acompanhe seu progresso e desempenho na página Performance
+                • Acompanhe seu progresso na página Performance
               </Text>
             </Flex>
           </Box>
