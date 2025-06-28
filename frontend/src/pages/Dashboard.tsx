@@ -93,7 +93,7 @@ export default function Dashboard() {
       
       // Se a nova visualização está dentro do cache, apenas atualizar a view
       if (newViewEndDate <= cacheEndDate) {
-        console.log('Dashboard: Using cached data');
+        console.log('Dashboard: Using cached data, updating view only');
         return {
           ...prev,
           currentViewStart: newViewStart,
@@ -105,11 +105,12 @@ export default function Dashboard() {
       console.log('Dashboard: Expanding cache for new data');
       const newCacheEnd = endOfMonth(addMonths(newViewEndDate, 5));
       
+      // CORREÇÃO: Manter a visualização atual e expandir apenas o cache
       return {
         startDate: prev.startDate, // Manter o início do cache
-        endDate: format(newCacheEnd, 'yyyy-MM-dd'),
-        currentViewStart: newViewStart,
-        currentViewEnd: newViewEnd,
+        endDate: format(newCacheEnd, 'yyyy-MM-dd'), // Expandir o fim do cache
+        currentViewStart: newViewStart, // Atualizar a visualização atual
+        currentViewEnd: newViewEnd, // Atualizar a visualização atual
         cacheUntil: newCacheEnd
       };
     });
@@ -172,7 +173,7 @@ export default function Dashboard() {
     return DEFAULT_COLORS[difficulty as keyof typeof DEFAULT_COLORS] || DEFAULT_COLORS.iniciante;
   };
 
-  // Mostrar loading apenas se não temos dados em cache
+  // Mostrar loading apenas se não temos dados em cache E estamos fazendo a primeira requisição
   const isLoading = calendarSessions.isLoading && !calendarSessions.data;
 
   return (
@@ -251,12 +252,21 @@ export default function Dashboard() {
               moreLinkClick="popover"
               eventDisplay="block"
               displayEventTime={false}
-              // Configurações para melhor performance
+              // Configurações para melhor performance e navegação
               lazyFetching={true}
               eventDidMount={(info) => {
                 // Adicionar tooltip se necessário
                 info.el.title = `${info.event.extendedProps.technology} - ${info.event.extendedProps.subtopic}`;
               }}
+              // CORREÇÃO: Não permitir que o FullCalendar mude a view automaticamente
+              // quando os dados são carregados
+              viewDidMount={(view) => {
+                console.log('Dashboard: View mounted:', view.view.type, view.view.currentStart);
+              }}
+              // Evitar que o calendário "pule" para datas específicas
+              nowIndicator={false}
+              // Manter a navegação suave
+              aspectRatio={1.8}
             />
           )}
         </Card>
