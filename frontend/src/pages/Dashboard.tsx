@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import ptBrLocale from '@fullcalendar/core/locales/pt-br';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -42,6 +42,7 @@ export default function Dashboard() {
   const [selectedSession, setSelectedSession] = useState<TechnologyStudySession | null>(null);
   const [showSessionModal, setShowSessionModal] = useState(false);
   const [sessionNotes, setSessionNotes] = useState('');
+  const calendarRef = useRef<FullCalendar>(null);
   
   // Estado para controlar as datas do calendário com cache inteligente
   const [calendarDateRange, setCalendarDateRange] = useState(() => {
@@ -52,9 +53,8 @@ export default function Dashboard() {
     return {
       startDate: format(currentMonthStart, 'yyyy-MM-dd'),
       endDate: format(futureMonthEnd, 'yyyy-MM-dd'),
-      currentViewStart: format(currentMonthStart, 'yyyy-MM-dd'),
-      currentViewEnd: format(endOfMonth(today), 'yyyy-MM-dd'),
-      cacheUntil: futureMonthEnd
+      cacheUntil: futureMonthEnd,
+      isExpanding: false
     };
   });
 
@@ -69,52 +69,60 @@ export default function Dashboard() {
     endDate: calendarDateRange.endDate
   });
 
-  // Filtrar eventos apenas para o período visível atual
-  const visibleEvents = useMemo(() => {
+  // Eventos do calendário
+  const calendarEvents = useMemo(() => {
     if (!calendarSessions.data) return [];
     
-    return calendarSessions.data.filter((session: any) => {
-      const sessionDate = session.date;
-      return sessionDate >= calendarDateRange.currentViewStart && 
-             sessionDate <= calendarDateRange.currentViewEnd;
-    });
-  }, [calendarSessions.data, calendarDateRange.currentViewStart, calendarDateRange.currentViewEnd]);
+    return calendarSessions.data;
+  }, [calendarSessions.data]);
 
   // Callback para quando as datas do calendário mudarem
   const handleDatesSet = useCallback((dateInfo: any) => {
-    const newViewStart = format(dateInfo.start, 'yyyy-MM-dd');
-    const newViewEnd = format(new Date(dateInfo.end.getTime() - 1), 'yyyy-MM-dd');
+    const newViewStart = dateInfo.start;
+    const newViewEnd = new Date(dateInfo.end.getTime() - 1); // FullCalendar end é exclusivo
     
-    console.log('Dashboard: Calendar view changed:', { newViewStart, newViewEnd });
+    console.log('Dashboard: Calendar view changed:', { 
+      newViewStart: format(newViewStart, 'yyyy-MM-dd'), 
+      newViewEnd: format(newViewEnd, 'yyyy-MM-dd'),
+      cacheUntil: format(calendarDateRange.cacheUntil, 'yyyy-MM-dd')
+    });
     
     setCalendarDateRange(prev => {
-      const newViewEndDate = new Date(newViewEnd);
-      const cacheEndDate = new Date(prev.endDate);
+      // Se a nova visualização está dentro do cache, não fazer nada
+      if (newViewEnd <= prev.cacheUntil && !prev.isExpanding) {
+        console.log('Dashboard: View is within cache, no action needed');
+        return prev;
+      }
       
-      // Se a nova visualização está dentro do cache, apenas atualizar a view
-      if (newViewEndDate <= cacheEndDate) {
-        console.log('Dashboard: Using cached data, updating view only');
-        return {
-          ...prev,
-          currentViewStart: newViewStart,
-          currentViewEnd: newViewEnd
-        };
+      // Se já estamos expandindo, não fazer nada para evitar loops
+      if (prev.isExpanding) {
+        console.log('Dashboard: Already expanding cache, skipping');
+        return prev;
       }
       
       // Se precisamos de mais dados, expandir o cache
-      console.log('Dashboard: Expanding cache for new data');
-      const newCacheEnd = endOfMonth(addMonths(newViewEndDate, 5));
+      console.log('Dashboard: Need to expand cache');
+      const newCacheEnd = endOfMonth(addMonths(newViewEnd, 5));
       
-      // CORREÇÃO: Manter a visualização atual e expandir apenas o cache
       return {
         startDate: prev.startDate, // Manter o início do cache
         endDate: format(newCacheEnd, 'yyyy-MM-dd'), // Expandir o fim do cache
-        currentViewStart: newViewStart, // Atualizar a visualização atual
-        currentViewEnd: newViewEnd, // Atualizar a visualização atual
-        cacheUntil: newCacheEnd
+        cacheUntil: newCacheEnd,
+        isExpanding: true // Flag para indicar que estamos expandindo
       };
     });
-  }, []);
+  }, [calendarDateRange.cacheUntil]);
+
+  // Reset da flag de expansão quando os dados chegarem
+  React.useEffect(() => {
+    if (calendarSessions.data && calendarDateRange.isExpanding) {
+      console.log('Dashboard: Cache expansion completed, resetting flag');
+      setCalendarDateRange(prev => ({
+        ...prev,
+        isExpanding: false
+      }));
+    }
+  }, [calendarSessions.data, calendarDateRange.isExpanding]);
 
   const handleEventClick = ({ event }: any) => {
     const sessionData = event.extendedProps.session;
@@ -222,9 +230,10 @@ export default function Dashboard() {
             </Flex>
           ) : (
             <FullCalendar
+              ref={calendarRef}
               plugins={[dayGridPlugin, interactionPlugin]}
               initialView="dayGridMonth"
-              events={visibleEvents}
+              events={calendarEvents}
               eventClick={handleEventClick}
               datesSet={handleDatesSet}
               eventContent={(eventInfo) => {
@@ -253,20 +262,28 @@ export default function Dashboard() {
               eventDisplay="block"
               displayEventTime={false}
               // Configurações para melhor performance e navegação
-              lazyFetching={true}
+              lazyFetching={false} // Desabilitar lazy fetching para ter controle total
               eventDidMount={(info) => {
                 // Adicionar tooltip se necessário
                 info.el.title = `${info.event.extendedProps.technology} - ${info.event.extendedProps.subtopic}`;
               }}
-              // CORREÇÃO: Não permitir que o FullCalendar mude a view automaticamente
-              // quando os dados são carregados
-              viewDidMount={(view) => {
-                console.log('Dashboard: View mounted:', view.view.type, view.view.currentStart);
-              }}
-              // Evitar que o calendário "pule" para datas específicas
+              // Configurações para evitar "pulos" no calendário
               nowIndicator={false}
-              // Manter a navegação suave
               aspectRatio={1.8}
+              // Configuração importante: não permitir que o FullCalendar mude a view automaticamente
+              validRange={{
+                start: '2020-01-01', // Data bem no passado
+                end: '2030-12-31'     // Data bem no futuro
+              }}
+              // Evitar que o calendário "pule" para hoje quando os dados mudam
+              selectMirror={false}
+              unselectAuto={false}
+              // Configurações de loading
+              loading={(isLoading) => {
+                if (isLoading && calendarDateRange.isExpanding) {
+                  console.log('Dashboard: FullCalendar is loading new data...');
+                }
+              }}
             />
           )}
         </Card>
