@@ -1,15 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import ptBrLocale from '@fullcalendar/core/locales/pt-br';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
-import { Box, Flex, Text, Button, Card, Dialog } from '@radix-ui/themes';
+import { Box, Flex, Text, Button, Card, Dialog, TextField } from '@radix-ui/themes';
 import { CheckCircle, RotateCcw, Clock, BookOpen } from 'lucide-react';
 import Layout from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-toastify';
 import { useStudyConfig } from '../hooks/api/useStudyConfig';
-import { format, addDays } from 'date-fns';
+import { format } from 'date-fns';
 
 interface TechnologyStudySession {
   id: string;
@@ -39,22 +39,39 @@ const DEFAULT_COLORS = {
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const { 
-    studySessionsForCalendar: { data: sessions, isLoading, error },
-    completeStudySession,
-    deleteStudySession
-  } = useStudyConfig();
-  
   const [selectedSession, setSelectedSession] = useState<TechnologyStudySession | null>(null);
   const [showSessionModal, setShowSessionModal] = useState(false);
   const [sessionNotes, setSessionNotes] = useState('');
+  
+  // Estado para controlar as datas do calendário
+  const [calendarDateRange, setCalendarDateRange] = useState(() => {
+    const today = new Date();
+    return {
+      startDate: format(new Date(today.getFullYear(), today.getMonth(), 1), 'yyyy-MM-dd'),
+      endDate: format(new Date(today.getFullYear(), today.getMonth() + 1, 0), 'yyyy-MM-dd')
+    };
+  });
 
-  // Get calendar date range (current month)
-  const today = new Date();
-  const startDate = format(new Date(today.getFullYear(), today.getMonth(), 1), 'yyyy-MM-dd');
-  const endDate = format(new Date(today.getFullYear(), today.getMonth() + 1, 0), 'yyyy-MM-dd');
+  const { 
+    completeStudySession,
+    deleteStudySession
+  } = useStudyConfig();
 
-  const calendarSessions = useStudyConfig().studySessionsForCalendar({ startDate, endDate });
+  // Buscar sessões para o período atual do calendário
+  const calendarSessions = useStudyConfig().studySessionsForCalendar(calendarDateRange);
+
+  // Callback para quando as datas do calendário mudarem
+  const handleDatesSet = useCallback((dateInfo: any) => {
+    const newStartDate = format(dateInfo.start, 'yyyy-MM-dd');
+    const newEndDate = format(new Date(dateInfo.end.getTime() - 1), 'yyyy-MM-dd'); // Subtrair 1 dia porque o FullCalendar usa data exclusiva
+    
+    console.log('Dashboard: Calendar dates changed:', { newStartDate, newEndDate });
+    
+    setCalendarDateRange({
+      startDate: newStartDate,
+      endDate: newEndDate
+    });
+  }, []);
 
   const events = calendarSessions.data?.map(session => ({
     id: session.id,
@@ -173,6 +190,7 @@ export default function Dashboard() {
               initialView="dayGridMonth"
               events={events}
               eventClick={handleEventClick}
+              datesSet={handleDatesSet} // Callback para mudanças de data
               eventContent={(eventInfo) => {
                 const completed = eventInfo.event.extendedProps.completed;
                 const hours = eventInfo.event.extendedProps.hours;
@@ -189,6 +207,16 @@ export default function Dashboard() {
               height="auto"
               locale={ptBrLocale}
               className="fc-theme-standard"
+              headerToolbar={{
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth'
+              }}
+              // Configurações adicionais para melhor controle de datas
+              dayMaxEvents={3}
+              moreLinkClick="popover"
+              eventDisplay="block"
+              displayEventTime={false}
             />
           )}
         </Card>
@@ -250,22 +278,10 @@ export default function Dashboard() {
                     <Text as="label" size="2" weight="medium" mb="2" style={{ display: 'block' }}>
                       Notas (opcional)
                     </Text>
-                    <textarea
+                    <TextField.Root
                       value={sessionNotes}
                       onChange={(e) => setSessionNotes(e.target.value)}
                       placeholder="Adicione suas anotações sobre esta sessão de estudo..."
-                      style={{
-                        width: '100%',
-                        minHeight: '80px',
-                        padding: '8px',
-                        borderRadius: '6px',
-                        border: '1px solid var(--gray-6)',
-                        backgroundColor: 'var(--gray-2)',
-                        color: 'var(--gray-12)',
-                        fontSize: '14px',
-                        fontFamily: 'inherit',
-                        resize: 'vertical'
-                      }}
                       disabled={selectedSession.is_completed}
                     />
                   </Box>
