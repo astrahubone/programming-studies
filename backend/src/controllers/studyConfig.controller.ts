@@ -119,6 +119,29 @@ export class StudyConfigController {
     }
   };
 
+  resetStudySchedule = async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(StatusCodes.UNAUTHORIZED).json({
+          error: 'User not authenticated'
+        });
+      }
+
+      const result = await this.service.resetStudySchedule(userId);
+      
+      res.status(StatusCodes.OK).json({
+        message: 'Study schedule reset successfully',
+        ...result
+      });
+    } catch (error) {
+      console.error('Reset study schedule error:', error);
+      res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+        error: error instanceof Error ? error.message : 'Failed to reset study schedule'
+      });
+    }
+  };
+
   generateStudySchedule = async (req: AuthRequest, res: Response) => {
     try {
       const userId = req.user?.id;

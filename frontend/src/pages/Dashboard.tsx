@@ -4,7 +4,7 @@ import ptBrLocale from '@fullcalendar/core/locales/pt-br';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import { Box, Flex, Text, Button, Card, Dialog, TextField } from '@radix-ui/themes';
-import { CheckCircle, RotateCcw, Clock, BookOpen } from 'lucide-react';
+import { CheckCircle, RotateCcw, Clock, BookOpen, Trash2 } from 'lucide-react';
 import Layout from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-toastify';
@@ -42,6 +42,7 @@ export default function Dashboard() {
   const [selectedSession, setSelectedSession] = useState<TechnologyStudySession | null>(null);
   const [showSessionModal, setShowSessionModal] = useState(false);
   const [sessionNotes, setSessionNotes] = useState('');
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
   const calendarRef = useRef<FullCalendar>(null);
   
   // Estado para controlar as datas do calendário com cache inteligente
@@ -60,7 +61,8 @@ export default function Dashboard() {
 
   const { 
     completeStudySession,
-    deleteStudySession
+    deleteStudySession,
+    resetStudySchedule
   } = useStudyConfig();
 
   // Buscar sessões para o período em cache
@@ -168,6 +170,15 @@ export default function Dashboard() {
     }
   };
 
+  const handleResetSchedule = async () => {
+    try {
+      await resetStudySchedule.mutateAsync();
+      setShowResetConfirm(false);
+    } catch (error) {
+      console.error('Error resetting schedule:', error);
+    }
+  };
+
   const getDifficultyLabel = (difficulty: string) => {
     switch (difficulty) {
       case 'iniciante': return 'Iniciante';
@@ -196,6 +207,16 @@ export default function Dashboard() {
               Acompanhe suas sessões de estudo e seu progresso
             </Text>
           </Box>
+          
+          <Button
+            color="red"
+            variant="solid"
+            onClick={() => setShowResetConfirm(true)}
+            disabled={resetStudySchedule.isPending}
+          >
+            <Trash2 size={16} />
+            {resetStudySchedule.isPending ? 'Resetando...' : 'Resetar Cronograma'}
+          </Button>
         </Flex>
 
         <Card size="3">
@@ -287,6 +308,66 @@ export default function Dashboard() {
             />
           )}
         </Card>
+
+        {/* Reset Confirmation Modal */}
+        <Dialog.Root open={showResetConfirm} onOpenChange={setShowResetConfirm}>
+          <Dialog.Content style={{ maxWidth: '500px' }}>
+            <Dialog.Title>
+              Resetar Cronograma de Estudos
+            </Dialog.Title>
+            
+            <Box mt="4">
+              <Text size="3" mb="4" style={{ display: 'block' }}>
+                ⚠️ <strong>Atenção!</strong> Esta ação irá apagar completamente:
+              </Text>
+              
+              <Box mb="4" p="3" style={{ 
+                backgroundColor: 'var(--red-2)', 
+                borderRadius: '8px',
+                border: '1px solid var(--red-6)'
+              }}>
+                <Flex direction="column" gap="2">
+                  <Text size="2" style={{ color: 'var(--red-11)' }}>
+                    • Todas as configurações de estudo (dias, horas, tecnologias)
+                  </Text>
+                  <Text size="2" style={{ color: 'var(--red-11)' }}>
+                    • Todas as sessões de estudo agendadas
+                  </Text>
+                  <Text size="2" style={{ color: 'var(--red-11)' }}>
+                    • Todo o progresso e histórico de estudos
+                  </Text>
+                  <Text size="2" style={{ color: 'var(--red-11)' }}>
+                    • Todas as anotações das sessões
+                  </Text>
+                </Flex>
+              </Box>
+
+              <Text size="3" mb="4" style={{ display: 'block' }}>
+                <strong>Esta ação não pode ser desfeita!</strong> Você precisará reconfigurar tudo do zero.
+              </Text>
+
+              <Text size="2" color="gray">
+                Tem certeza que deseja continuar?
+              </Text>
+            </Box>
+
+            <Flex justify="end" gap="3" mt="6">
+              <Dialog.Close>
+                <Button variant="outline">
+                  Cancelar
+                </Button>
+              </Dialog.Close>
+              <Button 
+                color="red" 
+                onClick={handleResetSchedule}
+                disabled={resetStudySchedule.isPending}
+              >
+                <Trash2 size={16} />
+                {resetStudySchedule.isPending ? 'Resetando...' : 'Sim, Resetar Tudo'}
+              </Button>
+            </Flex>
+          </Dialog.Content>
+        </Dialog.Root>
 
         {/* Session Details Modal */}
         <Dialog.Root open={showSessionModal} onOpenChange={setShowSessionModal}>

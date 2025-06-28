@@ -115,6 +115,45 @@ export function useStudyConfig() {
     },
   });
 
+  const resetStudySchedule = useMutation({
+    mutationFn: async () => {
+      const response = await api.post('/study-config/reset');
+      return response.data;
+    },
+    onSuccess: (data) => {
+      // Invalidar todas as queries relacionadas
+      queryClient.invalidateQueries({ queryKey: ['studyConfig'] });
+      queryClient.invalidateQueries({ queryKey: ['studySessions'] });
+      queryClient.invalidateQueries({ queryKey: ['studySessionsCalendar'] });
+      
+      toast.success(
+        `Cronograma resetado com sucesso! ${data.deletedSessions} sessões e ${data.deactivatedConfigurations} configurações foram removidas.`,
+        {
+          position: "top-right",
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+          theme: "light",
+        }
+      );
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || 'Falha ao resetar cronograma de estudos', {
+        position: "top-right",
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: "dark",
+      });
+    },
+  });
+
   const generateSchedule = useMutation({
     mutationFn: async (configId: string) => {
       const response = await api.post(`/study-config/${configId}/generate-schedule`);
@@ -238,6 +277,7 @@ export function useStudyConfig() {
     createStudyConfig,
     updateStudyConfig,
     deleteStudyConfig,
+    resetStudySchedule,
     generateSchedule,
     studySessions,
     studySessionsForCalendar,

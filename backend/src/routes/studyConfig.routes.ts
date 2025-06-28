@@ -14,6 +14,9 @@ studyConfigRouter.post('/', controller.createStudyConfig);
 studyConfigRouter.put('/:id', controller.updateStudyConfig);
 studyConfigRouter.delete('/:id', controller.deleteStudyConfig);
 
+// Reset study schedule - COMPLETE RESET
+studyConfigRouter.post('/reset', controller.resetStudySchedule);
+
 // Study schedule generation
 studyConfigRouter.post('/:id/generate-schedule', controller.generateStudySchedule);
 studyConfigRouter.get('/:id/schedule', controller.getStudySchedule);

@@ -156,6 +156,71 @@ export class StudyConfigService {
     if (error) throw error;
   }
 
+  async resetStudySchedule(userId: string) {
+    try {
+      console.log(`Starting study schedule reset for user: ${userId}`);
+
+      // 1. Buscar todas as configurações ativas do usuário
+      const { data: activeConfigs, error: configError } = await supabase
+        .from('study_configurations')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('is_active', true);
+
+      if (configError) {
+        console.error('Error fetching active configs:', configError);
+        throw configError;
+      }
+
+      const configIds = activeConfigs?.map(config => config.id) || [];
+      console.log(`Found ${configIds.length} active configurations`);
+
+      // 2. Deletar todas as sessões de estudo do usuário
+      const { data: deletedSessions, error: deleteSessionsError } = await supabase
+        .from('technology_study_sessions')
+        .delete()
+        .eq('user_id', userId)
+        .select('id');
+
+      if (deleteSessionsError) {
+        console.error('Error deleting study sessions:', deleteSessionsError);
+        throw deleteSessionsError;
+      }
+
+      const deletedSessionsCount = deletedSessions?.length || 0;
+      console.log(`Deleted ${deletedSessionsCount} study sessions`);
+
+      // 3. Desativar todas as configurações de estudo do usuário
+      const { data: deactivatedConfigs, error: deactivateError } = await supabase
+        .from('study_configurations')
+        .update({ is_active: false })
+        .eq('user_id', userId)
+        .eq('is_active', true)
+        .select('id');
+
+      if (deactivateError) {
+        console.error('Error deactivating configs:', deactivateError);
+        throw deactivateError;
+      }
+
+      const deactivatedConfigsCount = deactivatedConfigs?.length || 0;
+      console.log(`Deactivated ${deactivatedConfigsCount} study configurations`);
+
+      const result = {
+        deletedSessions: deletedSessionsCount,
+        deactivatedConfigurations: deactivatedConfigsCount,
+        resetDate: new Date().toISOString()
+      };
+
+      console.log('Study schedule reset completed successfully:', result);
+      return result;
+
+    } catch (error) {
+      console.error('Error in resetStudySchedule:', error);
+      throw new Error(`Failed to reset study schedule: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
   async generateStudySchedule(userId: string, configId: string) {
     // Chamar a função do banco de dados para gerar o cronograma
     const { data, error } = await supabase
