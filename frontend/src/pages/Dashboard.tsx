@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import ptBrLocale from '@fullcalendar/core/locales/pt-br';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -9,7 +9,7 @@ import Layout from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-toastify';
 import { useStudyConfig } from '../hooks/api/useStudyConfig';
-import { format } from 'date-fns';
+import { format, addMonths, startOfMonth, endOfMonth } from 'date-fns';
 
 interface TechnologyStudySession {
   id: string;
@@ -43,12 +43,18 @@ export default function Dashboard() {
   const [showSessionModal, setShowSessionModal] = useState(false);
   const [sessionNotes, setSessionNotes] = useState('');
   
-  // Estado para controlar as datas do calendário
+  // Estado para controlar as datas do calendário com cache inteligente
   const [calendarDateRange, setCalendarDateRange] = useState(() => {
     const today = new Date();
+    const currentMonthStart = startOfMonth(today);
+    const futureMonthEnd = endOfMonth(addMonths(today, 5)); // 5 meses à frente
+    
     return {
-      startDate: format(new Date(today.getFullYear(), today.getMonth(), 1), 'yyyy-MM-dd'),
-      endDate: format(new Date(today.getFullYear(), today.getMonth() + 1, 0), 'yyyy-MM-dd')
+      startDate: format(currentMonthStart, 'yyyy-MM-dd'),
+      endDate: format(futureMonthEnd, 'yyyy-MM-dd'),
+      currentViewStart: format(currentMonthStart, 'yyyy-MM-dd'),
+      currentViewEnd: format(endOfMonth(today), 'yyyy-MM-dd'),
+      cacheUntil: futureMonthEnd
     };
   });
 
@@ -57,31 +63,57 @@ export default function Dashboard() {
     deleteStudySession
   } = useStudyConfig();
 
-  // Buscar sessões para o período atual do calendário
-  const calendarSessions = useStudyConfig().studySessionsForCalendar(calendarDateRange);
+  // Buscar sessões para o período em cache
+  const calendarSessions = useStudyConfig().studySessionsForCalendar({
+    startDate: calendarDateRange.startDate,
+    endDate: calendarDateRange.endDate
+  });
+
+  // Filtrar eventos apenas para o período visível atual
+  const visibleEvents = useMemo(() => {
+    if (!calendarSessions.data) return [];
+    
+    return calendarSessions.data.filter((session: any) => {
+      const sessionDate = session.date;
+      return sessionDate >= calendarDateRange.currentViewStart && 
+             sessionDate <= calendarDateRange.currentViewEnd;
+    });
+  }, [calendarSessions.data, calendarDateRange.currentViewStart, calendarDateRange.currentViewEnd]);
 
   // Callback para quando as datas do calendário mudarem
   const handleDatesSet = useCallback((dateInfo: any) => {
-    const newStartDate = format(dateInfo.start, 'yyyy-MM-dd');
-    const newEndDate = format(new Date(dateInfo.end.getTime() - 1), 'yyyy-MM-dd'); // Subtrair 1 dia porque o FullCalendar usa data exclusiva
+    const newViewStart = format(dateInfo.start, 'yyyy-MM-dd');
+    const newViewEnd = format(new Date(dateInfo.end.getTime() - 1), 'yyyy-MM-dd');
     
-    console.log('Dashboard: Calendar dates changed:', { newStartDate, newEndDate });
+    console.log('Dashboard: Calendar view changed:', { newViewStart, newViewEnd });
     
-    setCalendarDateRange({
-      startDate: newStartDate,
-      endDate: newEndDate
+    setCalendarDateRange(prev => {
+      const newViewEndDate = new Date(newViewEnd);
+      const cacheEndDate = new Date(prev.endDate);
+      
+      // Se a nova visualização está dentro do cache, apenas atualizar a view
+      if (newViewEndDate <= cacheEndDate) {
+        console.log('Dashboard: Using cached data');
+        return {
+          ...prev,
+          currentViewStart: newViewStart,
+          currentViewEnd: newViewEnd
+        };
+      }
+      
+      // Se precisamos de mais dados, expandir o cache
+      console.log('Dashboard: Expanding cache for new data');
+      const newCacheEnd = endOfMonth(addMonths(newViewEndDate, 5));
+      
+      return {
+        startDate: prev.startDate, // Manter o início do cache
+        endDate: format(newCacheEnd, 'yyyy-MM-dd'),
+        currentViewStart: newViewStart,
+        currentViewEnd: newViewEnd,
+        cacheUntil: newCacheEnd
+      };
     });
   }, []);
-
-  const events = calendarSessions.data?.map(session => ({
-    id: session.id,
-    title: session.title,
-    date: session.date,
-    backgroundColor: session.backgroundColor,
-    borderColor: session.borderColor,
-    className: 'cursor-pointer',
-    extendedProps: session.extendedProps,
-  })) || [];
 
   const handleEventClick = ({ event }: any) => {
     const sessionData = event.extendedProps.session;
@@ -140,6 +172,9 @@ export default function Dashboard() {
     return DEFAULT_COLORS[difficulty as keyof typeof DEFAULT_COLORS] || DEFAULT_COLORS.iniciante;
   };
 
+  // Mostrar loading apenas se não temos dados em cache
+  const isLoading = calendarSessions.isLoading && !calendarSessions.data;
+
   return (
     <Layout>
       <Box p="6">
@@ -176,7 +211,7 @@ export default function Dashboard() {
             </Flex>
           </Box>
 
-          {calendarSessions.isLoading ? (
+          {isLoading ? (
             <Flex justify="center" align="center" style={{ height: '200px' }}>
               <Text>Carregando sessões...</Text>
             </Flex>
@@ -188,9 +223,9 @@ export default function Dashboard() {
             <FullCalendar
               plugins={[dayGridPlugin, interactionPlugin]}
               initialView="dayGridMonth"
-              events={events}
+              events={visibleEvents}
               eventClick={handleEventClick}
-              datesSet={handleDatesSet} // Callback para mudanças de data
+              datesSet={handleDatesSet}
               eventContent={(eventInfo) => {
                 const completed = eventInfo.event.extendedProps.completed;
                 const hours = eventInfo.event.extendedProps.hours;
@@ -212,11 +247,16 @@ export default function Dashboard() {
                 center: 'title',
                 right: 'dayGridMonth'
               }}
-              // Configurações adicionais para melhor controle de datas
               dayMaxEvents={3}
               moreLinkClick="popover"
               eventDisplay="block"
               displayEventTime={false}
+              // Configurações para melhor performance
+              lazyFetching={true}
+              eventDidMount={(info) => {
+                // Adicionar tooltip se necessário
+                info.el.title = `${info.event.extendedProps.technology} - ${info.event.extendedProps.subtopic}`;
+              }}
             />
           )}
         </Card>
